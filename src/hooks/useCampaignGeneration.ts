@@ -8,6 +8,10 @@ interface CampaignData {
   arcContext: string[];
   customInput: string;
   imageStyle: string;
+  intentCategory?: string;
+  targetDApps?: string[];
+  actionOrder?: string[];
+  timeWindow?: string;
 }
 
 export interface GeneratedCampaign {
@@ -27,8 +31,25 @@ async function hashCaption(caption: string): Promise<string> {
   return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Generate fingerprint from intent data
+async function generateFingerprint(campaignData: CampaignData): Promise<string> {
+  const intentData = {
+    category: campaignData.intentCategory || '',
+    dApps: (campaignData.targetDApps || []).sort(),
+    actions: campaignData.actionOrder || [],
+    timeWindow: campaignData.timeWindow || 'none'
+  };
+  
+  const encoder = new TextEncoder();
+  const data = encoder.encode(JSON.stringify(intentData));
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
 export function useCampaignGeneration() {
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
   const [generatedCampaign, setGeneratedCampaign] = useState<GeneratedCampaign | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,7 +71,10 @@ export function useCampaignGeneration() {
           tones: campaignData.tones,
           arcContext: campaignData.arcContext,
           customInput: campaignData.customInput,
-          walletAddress
+          walletAddress,
+          intentCategory: campaignData.intentCategory,
+          targetDApps: campaignData.targetDApps,
+          actionOrder: campaignData.actionOrder
         }
       });
 
@@ -167,15 +191,21 @@ export function useCampaignGeneration() {
     }
   }, [generatedCampaign]);
 
-  const saveCampaignToDatabase = useCallback(async (
+  const completeCampaign = useCallback(async (
     campaignData: CampaignData,
     walletAddress: string
   ) => {
     if (!generatedCampaign) {
-      throw new Error('No campaign to save');
+      throw new Error('No campaign to complete');
     }
 
+    setIsCompleting(true);
+    setError(null);
+
     try {
+      // Generate fingerprint from intent data
+      const fingerprint = await generateFingerprint(campaignData);
+      
       const { data, error: insertError } = await supabase
         .from('campaigns')
         .insert({
@@ -189,7 +219,7 @@ export function useCampaignGeneration() {
           caption_hash: generatedCampaign.captionHash || await hashCaption(generatedCampaign.caption),
           image_url: generatedCampaign.imageUrl,
           image_status: generatedCampaign.imageStatus,
-          status: 'draft'
+          status: 'completed' // Mark as completed instead of draft
         })
         .select()
         .single();
@@ -202,13 +232,22 @@ export function useCampaignGeneration() {
         throw insertError;
       }
 
-      toast.success('Campaign saved!', { icon: '💾' });
+      // Quiet confirmation - no celebration
+      toast('Campaign completed. Proof generating...', { 
+        icon: '🔒',
+        duration: 3000 
+      });
+      
+      console.log('✅ Campaign completed with fingerprint:', fingerprint);
       return data;
 
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Failed to save campaign';
+      const errorMessage = err instanceof Error ? err.message : 'Failed to complete campaign';
+      setError(errorMessage);
       toast.error(errorMessage);
       throw err;
+    } finally {
+      setIsCompleting(false);
     }
   }, [generatedCampaign]);
 
@@ -219,12 +258,13 @@ export function useCampaignGeneration() {
 
   return {
     isGenerating,
+    isCompleting,
     generatedCampaign,
     error,
     generateCampaign,
     regenerateCampaign,
     updateCaption,
-    saveCampaignToDatabase,
+    completeCampaign,
     resetCampaign,
     setGeneratedCampaign
   };
