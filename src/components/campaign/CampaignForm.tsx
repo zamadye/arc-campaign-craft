@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Zap, Info } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { Separator } from '@/components/ui/separator';
 import { CampaignData } from '@/pages/CreateCampaign';
+import { IntentCategorySelector, IntentCategory } from './IntentCategorySelector';
+import { TargetDAppsSelector } from './TargetDAppsSelector';
+import { ActionOrderBuilder } from './ActionOrderBuilder';
+import { TimeWindowSelector, TimeWindow } from './TimeWindowSelector';
 
 const campaignTypes = [
   { value: 'product-launch', label: 'Product Launch', icon: '🚀' },
@@ -64,11 +69,19 @@ export const CampaignForm: React.FC<CampaignFormProps> = ({
   isGenerating,
 }) => {
   const selectedContextCount = campaignData.arcContext.length;
-  const isFormValid =
+  
+  // Basic form validation for AI generation
+  const isBasicFormValid =
     campaignData.campaignType &&
     campaignData.tones.length > 0 &&
     selectedContextCount >= 2 &&
     campaignData.imageStyle;
+
+  // Full form validation including INTENT fields
+  const isIntentFieldsValid = 
+    campaignData.intentCategory !== '' &&
+    campaignData.targetDApps.length >= 2 &&
+    campaignData.actionOrder.length >= 3;
 
   const toggleTone = (tone: string) => {
     setCampaignData(prev => ({
@@ -91,6 +104,50 @@ export const CampaignForm: React.FC<CampaignFormProps> = ({
   return (
     <div className="glass rounded-2xl p-6 md:p-8 border border-border/50">
       <div className="space-y-8">
+        {/* Section: Intent Definition */}
+        <div className="space-y-2">
+          <h3 className="font-display font-semibold text-lg flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-sm">1</span>
+            Define Your Intent
+          </h3>
+          <p className="text-sm text-muted-foreground">Choose what type of activity you'll perform</p>
+        </div>
+
+        {/* Intent Category */}
+        <IntentCategorySelector
+          value={campaignData.intentCategory}
+          onChange={(category) => setCampaignData(prev => ({ ...prev, intentCategory: category }))}
+        />
+
+        {/* Target dApps */}
+        <TargetDAppsSelector
+          value={campaignData.targetDApps}
+          onChange={(dApps) => setCampaignData(prev => ({ ...prev, targetDApps: dApps }))}
+        />
+
+        {/* Action Order */}
+        <ActionOrderBuilder
+          value={campaignData.actionOrder}
+          onChange={(actions) => setCampaignData(prev => ({ ...prev, actionOrder: actions }))}
+        />
+
+        {/* Time Window */}
+        <TimeWindowSelector
+          value={campaignData.timeWindow}
+          onChange={(window) => setCampaignData(prev => ({ ...prev, timeWindow: window }))}
+        />
+
+        <Separator className="my-8" />
+
+        {/* Section: Content Generation */}
+        <div className="space-y-2">
+          <h3 className="font-display font-semibold text-lg flex items-center gap-2">
+            <span className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center text-sm">2</span>
+            Generate Content
+          </h3>
+          <p className="text-sm text-muted-foreground">AI will create marketing content for your intent</p>
+        </div>
+
         {/* Campaign Type */}
         <div className="space-y-3">
           <div className="flex items-center gap-2">
@@ -133,7 +190,7 @@ export const CampaignForm: React.FC<CampaignFormProps> = ({
                 onClick={() => toggleTone(tone.value)}
                 className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${
                   campaignData.tones.includes(tone.value)
-                    ? 'bg-primary text-primary-foreground shadow-[0_0_20px_hsl(189_100%_50%/0.3)]'
+                    ? 'bg-primary text-primary-foreground shadow-[0_0_20px_hsl(var(--primary)/0.3)]'
                     : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
                 }`}
               >
@@ -158,7 +215,7 @@ export const CampaignForm: React.FC<CampaignFormProps> = ({
                 </TooltipContent>
               </Tooltip>
             </div>
-            <span className={`text-xs ${selectedContextCount >= 2 ? 'text-usdc' : 'text-muted-foreground'}`}>
+            <span className={`text-xs ${selectedContextCount >= 2 ? 'text-accent' : 'text-muted-foreground'}`}>
               {selectedContextCount} of 5 selected (min 2)
             </span>
           </div>
@@ -222,7 +279,7 @@ export const CampaignForm: React.FC<CampaignFormProps> = ({
                 }
                 className={`flex flex-col items-center gap-2 p-4 rounded-xl transition-all duration-300 ${
                   campaignData.imageStyle === style.value
-                    ? 'bg-primary/20 border-2 border-primary shadow-[0_0_20px_hsl(189_100%_50%/0.2)]'
+                    ? 'bg-primary/20 border-2 border-primary shadow-[0_0_20px_hsl(var(--primary)/0.2)]'
                     : 'bg-secondary/50 border-2 border-transparent hover:border-border'
                 }`}
               >
@@ -244,12 +301,12 @@ export const CampaignForm: React.FC<CampaignFormProps> = ({
             size="xl"
             className="w-full"
             onClick={onGenerate}
-            disabled={!isFormValid || isGenerating}
+            disabled={!isBasicFormValid || isGenerating}
           >
             {isGenerating ? (
               <>
                 <div className="w-5 h-5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                AI is cooking...
+                AI is generating...
               </>
             ) : (
               <>
@@ -258,11 +315,20 @@ export const CampaignForm: React.FC<CampaignFormProps> = ({
               </>
             )}
           </Button>
-          {!isFormValid && (
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              Please fill in all required fields to generate
-            </p>
-          )}
+          
+          {/* Validation Messages */}
+          <div className="mt-3 space-y-1">
+            {!isBasicFormValid && (
+              <p className="text-xs text-muted-foreground text-center">
+                Fill in Campaign Type, Tone, Arc Context (min 2), and Image Style to generate
+              </p>
+            )}
+            {isBasicFormValid && !isIntentFieldsValid && (
+              <p className="text-xs text-accent/80 text-center">
+                💡 Complete Intent fields above to lock your campaign as on-chain proof
+              </p>
+            )}
+          </div>
         </motion.div>
       </div>
     </div>

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  RefreshCw, Edit3, Coins, Heart, MessageCircle, Repeat2, Share, 
-  CheckCircle, ExternalLink, Loader2, Twitter
+  RefreshCw, Edit3, Heart, MessageCircle, Repeat2, Share, 
+  CheckCircle, ExternalLink, Loader2, Lock, Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -17,7 +17,7 @@ import {
 import { JazziconAvatar } from '@/components/JazziconAvatar';
 import { useWallet } from '@/contexts/WalletContext';
 import { GeneratedCampaign } from '@/hooks/useCampaignGeneration';
-import { useNFTMinting } from '@/hooks/useNFTMinting';
+import { CampaignData } from '@/pages/CreateCampaign';
 import { cn } from '@/lib/utils';
 
 interface CampaignPreviewProps {
@@ -25,11 +25,10 @@ interface CampaignPreviewProps {
   isGenerating: boolean;
   onRegenerate: () => void;
   onUpdateCaption: (caption: string) => void;
-  campaignData?: {
-    campaignType: string;
-    imageStyle: string;
-  };
-  onMintSuccess?: (tokenId: string, txHash: string) => void;
+  campaignData?: CampaignData;
+  onComplete?: () => void;
+  isCompleting?: boolean;
+  completedCampaignId?: string | null;
 }
 
 export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
@@ -38,23 +37,20 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
   onRegenerate,
   onUpdateCaption,
   campaignData,
-  onMintSuccess,
+  onComplete,
+  isCompleting,
+  completedCampaignId,
 }) => {
   const { address, isConnected, isCorrectNetwork, connect, switchNetwork } = useWallet();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editedCaption, setEditedCaption] = useState('');
-  const [showMintSuccess, setShowMintSuccess] = useState(false);
+  const [showCompletionSuccess, setShowCompletionSuccess] = useState(false);
 
-  const {
-    isMinting,
-    mintStatus,
-    mintProgress,
-    tokenId,
-    txHash,
-    error: mintError,
-    mintNFT,
-    MINT_COST_USDC,
-  } = useNFTMinting();
+  // Check if intent fields are complete
+  const isIntentComplete = campaignData && 
+    campaignData.intentCategory !== '' &&
+    campaignData.targetDApps.length >= 2 &&
+    campaignData.actionOrder.length >= 3;
 
   const handleEditOpen = () => {
     if (campaign) {
@@ -68,7 +64,7 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
     setIsEditModalOpen(false);
   };
 
-  const handleMint = async () => {
+  const handleComplete = async () => {
     if (!isConnected) {
       await connect();
       return;
@@ -79,45 +75,27 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
       return;
     }
 
-    if (!campaign || !address) return;
-
-    const result = await mintNFT(
-      campaign.id,
-      campaign.caption,
-      campaign.captionHash || '',
-      campaign.imageUrl,
-      campaignData?.campaignType || 'general',
-      campaignData?.imageStyle || 'cyberpunk',
-      address
-    );
-
-    if (result.success && result.tokenId && result.txHash) {
-      setShowMintSuccess(true);
-      onMintSuccess?.(result.tokenId, result.txHash);
+    if (onComplete) {
+      await onComplete();
+      setShowCompletionSuccess(true);
     }
   };
 
-  // Generate Share to X URL
-  const generateShareToXUrl = () => {
+  // Generate Share URL
+  const generateShareUrl = () => {
     if (!campaign) return '';
     
-    // Create the tweet text with caption and NFT link
     let tweetText = campaign.caption;
     
-    // Add the NFT marketplace link if minted
-    if (tokenId && txHash) {
-      const nftUrl = `https://testnet.arcscan.app/tx/${txHash}`;
-      tweetText += `\n\n🎨 Minted as NFT on Arc Network\n${nftUrl}`;
+    if (completedCampaignId) {
+      tweetText += `\n\n🔒 Recorded as structured intent on Arc Network`;
     }
     
-    // Encode for URL
-    const encodedText = encodeURIComponent(tweetText);
-    
-    return `https://twitter.com/intent/tweet?text=${encodedText}`;
+    return `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
   };
 
-  const handleShareToX = () => {
-    const shareUrl = generateShareToXUrl();
+  const handleShare = () => {
+    const shareUrl = generateShareUrl();
     if (shareUrl) {
       window.open(shareUrl, '_blank', 'noopener,noreferrer,width=600,height=400');
     }
@@ -144,7 +122,7 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-display font-semibold">Preview</h3>
           {campaign && (
-            <span className="text-xs text-usdc font-medium">Live Preview</span>
+            <span className="text-xs text-accent font-medium">Live Preview</span>
           )}
         </div>
 
@@ -154,8 +132,8 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
           <div className="flex items-center gap-3 mb-3">
             <JazziconAvatar address={address || '0x0000000000000000000000000000000000000000'} diameter={40} />
             <div>
-              <div className="font-medium text-sm">Arc Campaigner</div>
-              <div className="text-muted-foreground text-xs">@arc_campaign</div>
+              <div className="font-medium text-sm">INTENT User</div>
+              <div className="text-muted-foreground text-xs">@intent_user</div>
             </div>
           </div>
 
@@ -219,7 +197,7 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
               <MessageCircle className="w-4 h-4" />
               <span>24</span>
             </button>
-            <button className="flex items-center gap-1 hover:text-usdc transition-colors">
+            <button className="flex items-center gap-1 hover:text-accent transition-colors">
               <Repeat2 className="w-4 h-4" />
               <span>128</span>
             </button>
@@ -229,24 +207,57 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
             </button>
             <button 
               className="flex items-center gap-1 hover:text-primary transition-colors"
-              onClick={handleShareToX}
-              title="Share to X"
+              onClick={handleShare}
+              title="Share"
             >
               <Share className="w-4 h-4" />
             </button>
           </div>
         </div>
 
-        {/* NFT Badge */}
-        <div className="mt-4 p-3 rounded-lg bg-usdc/10 border border-usdc/30">
+        {/* Intent Status Badge */}
+        <div className={cn(
+          "mt-4 p-3 rounded-lg border",
+          isIntentComplete 
+            ? "bg-accent/10 border-accent/30" 
+            : "bg-muted/50 border-border/50"
+        )}>
           <div className="flex items-center gap-2 text-sm">
-            <Coins className="w-4 h-4 text-usdc" />
-            <span className="text-usdc font-medium">This will be minted as NFT</span>
+            {isIntentComplete ? (
+              <>
+                <Shield className="w-4 h-4 text-accent" />
+                <span className="text-accent font-medium">Ready to lock as on-chain proof</span>
+              </>
+            ) : (
+              <>
+                <Lock className="w-4 h-4 text-muted-foreground" />
+                <span className="text-muted-foreground">Complete intent fields to lock proof</span>
+              </>
+            )}
           </div>
+          {campaignData && (
+            <div className="mt-2 text-xs text-muted-foreground space-y-1">
+              <div className="flex items-center gap-2">
+                <span className={campaignData.intentCategory ? "text-accent" : ""}>
+                  {campaignData.intentCategory ? "✓" : "○"} Intent Category
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={campaignData.targetDApps.length >= 2 ? "text-accent" : ""}>
+                  {campaignData.targetDApps.length >= 2 ? "✓" : "○"} Target dApps ({campaignData.targetDApps.length}/2 min)
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={campaignData.actionOrder.length >= 3 ? "text-accent" : ""}>
+                  {campaignData.actionOrder.length >= 3 ? "✓" : "○"} Action Order ({campaignData.actionOrder.length}/3 min)
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
-        {/* Minting Progress */}
-        {isMinting && (
+        {/* Completing Progress */}
+        {isCompleting && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -254,25 +265,14 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
           >
             <div className="flex items-center gap-2 mb-3">
               <Loader2 className="w-4 h-4 animate-spin text-primary" />
-              <span className="text-sm font-medium">{mintStatus}</span>
+              <span className="text-sm font-medium">Locking intent...</span>
             </div>
-            <Progress value={mintProgress} className="h-2" />
-          </motion.div>
-        )}
-
-        {/* Mint Error */}
-        {mintError && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mt-4 p-3 rounded-lg bg-destructive/10 border border-destructive/30"
-          >
-            <p className="text-sm text-destructive">{mintError}</p>
+            <Progress value={66} className="h-2" />
           </motion.div>
         )}
 
         {/* Action Buttons */}
-        {campaign && !isGenerating && !isMinting && !tokenId && (
+        {campaign && !isGenerating && !isCompleting && !completedCampaignId && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -289,40 +289,45 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
               </Button>
             </div>
 
-            {/* Share to X Button */}
+            {/* Share Button */}
             <Button 
               variant="outline" 
-              className="w-full bg-[#1DA1F2]/10 border-[#1DA1F2]/30 hover:bg-[#1DA1F2]/20 text-[#1DA1F2]"
-              onClick={handleShareToX}
+              className="w-full"
+              onClick={handleShare}
             >
-              <Twitter className="w-4 h-4 mr-2" />
-              Share to X
+              <Share className="w-4 h-4 mr-2" />
+              Share Campaign
             </Button>
             
+            {/* Complete Campaign Button */}
             <Button 
               variant="gradient" 
               className="w-full" 
               size="lg"
-              onClick={handleMint}
-              disabled={isMinting}
+              onClick={handleComplete}
+              disabled={!isIntentComplete || isCompleting}
             >
-              <Coins className="w-5 h-5 mr-2" />
+              <Lock className="w-5 h-5 mr-2" />
               {!isConnected 
-                ? 'Connect Wallet to Mint' 
+                ? 'Connect Wallet' 
                 : !isCorrectNetwork 
                   ? 'Switch to Arc Network' 
-                  : 'Mint as NFT'
+                  : !isIntentComplete
+                    ? 'Complete Intent Fields First'
+                    : 'Lock Intent & Generate Proof'
               }
             </Button>
             
-            <p className="text-center text-xs text-muted-foreground">
-              Mint Cost: {MINT_COST_USDC} USDC + gas
-            </p>
+            {isIntentComplete && (
+              <p className="text-center text-xs text-muted-foreground">
+                Your intent will be recorded on-chain
+              </p>
+            )}
           </motion.div>
         )}
 
-        {/* Minted Successfully */}
-        {tokenId && txHash && (
+        {/* Completed Successfully */}
+        {completedCampaignId && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -331,39 +336,37 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
             <div className="p-4 rounded-lg bg-accent/10 border border-accent/30">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="w-5 h-5 text-accent" />
-                <span className="font-medium text-accent">NFT Minted Successfully!</span>
+                <span className="font-medium text-accent">Campaign Completed!</span>
               </div>
-              <div className="space-y-2 text-sm">
-                <p className="text-muted-foreground">
-                  Token ID: <span className="font-mono text-foreground">{tokenId}</span>
-                </p>
-                <a 
-                  href={`https://testnet.arcscan.app/tx/${txHash}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-1 text-primary hover:underline"
-                >
-                  View on ArcScan
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
+              <p className="text-sm text-muted-foreground">
+                Your structured intent has been recorded. Proof will appear in your wallet.
+              </p>
             </div>
 
-            {/* Share to X after minting */}
             <Button 
-              className="w-full bg-[#1DA1F2] hover:bg-[#1DA1F2]/90 text-white"
-              onClick={handleShareToX}
+              variant="outline" 
+              className="w-full"
+              onClick={handleShare}
             >
-              <Twitter className="w-4 h-4 mr-2" />
-              Share NFT to X
+              <Share className="w-4 h-4 mr-2" />
+              Share Your Intent
             </Button>
             
             <Button 
               variant="outline" 
               className="w-full"
-              onClick={() => window.location.href = '/marketplace'}
+              onClick={() => window.location.href = '/proofs'}
             >
-              View in Marketplace
+              <ExternalLink className="w-4 h-4 mr-2" />
+              View All Proofs
+            </Button>
+            
+            <Button 
+              variant="gradient" 
+              className="w-full"
+              onClick={() => window.location.reload()}
+            >
+              Create Another Campaign
             </Button>
           </motion.div>
         )}
@@ -375,7 +378,7 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
           <DialogHeader>
             <DialogTitle>Edit Caption</DialogTitle>
             <DialogDescription>
-              Customize your campaign caption before minting.
+              Customize your campaign caption before completing.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
@@ -401,39 +404,42 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
         </DialogContent>
       </Dialog>
 
-      {/* Mint Success Dialog */}
-      <Dialog open={showMintSuccess} onOpenChange={setShowMintSuccess}>
+      {/* Completion Success Dialog */}
+      <Dialog open={showCompletionSuccess} onOpenChange={setShowCompletionSuccess}>
         <DialogContent className="text-center">
           <div className="py-6">
             <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-accent/20 flex items-center justify-center">
               <CheckCircle className="w-10 h-10 text-accent" />
             </div>
-            <DialogTitle className="text-2xl mb-2">NFT Minted!</DialogTitle>
+            <DialogTitle className="text-2xl mb-2">Intent Recorded!</DialogTitle>
             <DialogDescription className="mb-6">
-              Your campaign has been successfully minted as an NFT on Arc Network.
+              Your structured intent has been locked on Arc Network. A proof will be generated and appear in your wallet.
             </DialogDescription>
             
             <div className="space-y-3">
-              {/* Primary Share to X CTA */}
               <Button 
-                className="w-full bg-[#1DA1F2] hover:bg-[#1DA1F2]/90 text-white"
-                onClick={handleShareToX}
+                variant="outline" 
+                className="w-full"
+                onClick={handleShare}
               >
-                <Twitter className="w-4 h-4 mr-2" />
-                Share Your NFT on X
+                <Share className="w-4 h-4 mr-2" />
+                Share Your Intent
               </Button>
               
               <Button 
                 variant="gradient" 
                 className="w-full"
-                onClick={() => window.location.href = '/marketplace'}
+                onClick={() => window.location.href = '/proofs'}
               >
-                View in Marketplace
+                View Intent Proofs
               </Button>
               <Button 
                 variant="outline" 
                 className="w-full"
-                onClick={() => setShowMintSuccess(false)}
+                onClick={() => {
+                  setShowCompletionSuccess(false);
+                  window.location.reload();
+                }}
               >
                 Create Another Campaign
               </Button>

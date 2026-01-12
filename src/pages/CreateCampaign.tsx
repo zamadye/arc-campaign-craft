@@ -10,6 +10,9 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useCampaignGeneration } from '@/hooks/useCampaignGeneration';
 import { useWallet } from '@/contexts/WalletContext';
+import { useAccessLevel } from '@/contexts/AccessLevelContext';
+import { IntentCategory } from '@/components/campaign/IntentCategorySelector';
+import { TimeWindow } from '@/components/campaign/TimeWindowSelector';
 
 export interface CampaignData {
   campaignType: string;
@@ -17,6 +20,11 @@ export interface CampaignData {
   arcContext: string[];
   customInput: string;
   imageStyle: string;
+  // New INTENT fields
+  intentCategory: IntentCategory | '';
+  targetDApps: string[];
+  actionOrder: string[];
+  timeWindow: TimeWindow;
 }
 
 // Re-export GeneratedCampaign from hook for backward compatibility
@@ -24,6 +32,7 @@ export type { GeneratedCampaign } from '@/hooks/useCampaignGeneration';
 
 const CreateCampaign: React.FC = () => {
   const { isConnected, address, connect, isConnecting, isCorrectNetwork, switchNetwork } = useWallet();
+  const { accessLevel, refreshAccessLevel } = useAccessLevel();
   const {
     isGenerating,
     generatedCampaign,
@@ -31,7 +40,8 @@ const CreateCampaign: React.FC = () => {
     generateCampaign,
     regenerateCampaign,
     updateCaption,
-    saveCampaignToDatabase
+    completeCampaign,
+    isCompleting
   } = useCampaignGeneration();
 
   const [campaignData, setCampaignData] = useState<CampaignData>({
@@ -40,9 +50,14 @@ const CreateCampaign: React.FC = () => {
     arcContext: [],
     customInput: '',
     imageStyle: '',
+    // New INTENT fields
+    intentCategory: '',
+    targetDApps: [],
+    actionOrder: [],
+    timeWindow: 'none',
   });
   const [activeTab, setActiveTab] = useState('create');
-  const [savedCampaignId, setSavedCampaignId] = useState<string | null>(null);
+  const [completedCampaignId, setCompletedCampaignId] = useState<string | null>(null);
 
   const handleGenerate = async () => {
     if (!isConnected) {
@@ -60,21 +75,22 @@ const CreateCampaign: React.FC = () => {
     await regenerateCampaign(campaignData, address);
   };
 
-  const handleUpdateCaption = (newCaption: string) => {
-    updateCaption(newCaption);
-  };
+  const handleComplete = async () => {
+    if (!isConnected) {
+      await connect();
+      return;
+    }
+    if (!isCorrectNetwork) {
+      await switchNetwork();
+      return;
+    }
+    if (!address || !generatedCampaign) return;
 
-  const handleMintSuccess = async (tokenId: string, txHash: string) => {
-    // Save campaign to database if not already saved
-    if (!savedCampaignId && address && generatedCampaign) {
-      try {
-        const saved = await saveCampaignToDatabase(campaignData, address);
-        if (saved) {
-          setSavedCampaignId(saved.id);
-        }
-      } catch (err) {
-        console.error('Failed to save campaign:', err);
-      }
+    const result = await completeCampaign(campaignData, address);
+    if (result?.id) {
+      setCompletedCampaignId(result.id);
+      // Refresh access level after completing a campaign
+      refreshAccessLevel();
     }
   };
 
@@ -91,12 +107,17 @@ const CreateCampaign: React.FC = () => {
             className="text-center mb-12"
           >
             <h1 className="font-display text-3xl md:text-4xl font-bold mb-4">
-              Create Your Campaign
+              Create Your Intent
             </h1>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              Design your AI-powered campaign for Arc Network. Choose your style, 
-              generate content, and mint it as an NFT.
+              Design your structured intent campaign for Arc Network. Define your actions, 
+              generate content, and lock your intent as on-chain proof.
             </p>
+            {accessLevel && (
+              <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent/10 border border-accent/30">
+                <span className="text-xs text-accent capitalize">Access: {String(accessLevel)}</span>
+              </div>
+            )}
           </motion.div>
 
           {/* Wallet Connection Alert */}
@@ -109,7 +130,7 @@ const CreateCampaign: React.FC = () => {
               <Alert className="border-primary/50 bg-primary/10">
                 <Wallet className="h-4 w-4 text-primary" />
                 <AlertDescription className="flex items-center justify-between">
-                  <span>Connect your wallet to create campaigns and mint NFTs on Arc Network.</span>
+                  <span>Connect your wallet to create campaigns on Arc Network.</span>
                   <Button
                     variant="gradient"
                     size="sm"
@@ -189,7 +210,9 @@ const CreateCampaign: React.FC = () => {
                   onRegenerate={handleRegenerate}
                   onUpdateCaption={updateCaption}
                   campaignData={campaignData}
-                  onMintSuccess={handleMintSuccess}
+                  onComplete={handleComplete}
+                  isCompleting={isCompleting}
+                  completedCampaignId={completedCampaignId}
                 />
               </div>
             </motion.div>
@@ -224,7 +247,9 @@ const CreateCampaign: React.FC = () => {
                   onRegenerate={handleRegenerate}
                   onUpdateCaption={updateCaption}
                   campaignData={campaignData}
-                  onMintSuccess={handleMintSuccess}
+                  onComplete={handleComplete}
+                  isCompleting={isCompleting}
+                  completedCampaignId={completedCampaignId}
                 />
               </TabsContent>
             </Tabs>
