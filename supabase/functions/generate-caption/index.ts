@@ -5,61 +5,98 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Arc Network context for AI generation
-const ARC_CONTEXT = {
+// Comprehensive Arc Network knowledge base from official documentation
+const ARC_KNOWLEDGE_BASE = {
   network: {
     name: "Arc Network",
-    type: "Layer 1 blockchain",
-    consensus: "Malachite consensus mechanism",
-    testnet: "Arc Testnet (Chain ID: 5042002)",
-    rpc: "https://rpc.testnet.arc.network",
-    explorer: "https://testnet.arcscan.app"
+    type: "Purpose-built EVM-compatible Layer-1 blockchain",
+    tagline: "The Economic OS for the internet",
+    description: "Arc is advancing the frontier of stablecoin finance and tokenization with USDC as native gas, deterministic settlement finality, opt-in privacy, and stable transaction fee architecture",
+    consensus: "Malachite - bespoke consensus layer providing deterministic finality",
+    testnet: {
+      name: "Arc Public Testnet",
+      chainId: "5042002 (0x4cef52)",
+      rpc: "https://rpc.testnet.arc.network",
+      explorer: "https://testnet.arcscan.app",
+      status: "Live - deploy, test, and build on Arc"
+    }
   },
-  features: {
+  coreFeatures: {
     "usdc-gas": {
-      name: "USDC Gas Fees",
-      description: "Arc uses USDC as native gas token, providing predictable and stable transaction costs unlike volatile native tokens",
-      benefits: ["Predictable costs", "No price volatility", "Better UX for users"]
+      name: "USDC as Native Gas",
+      description: "Arc uses USDC as the native gas token, eliminating gas price volatility and enabling predictable transaction costs. Users pay fees in a stable asset they already hold.",
+      benefits: ["Predictable costs for businesses", "No volatile native token required", "Better UX for mainstream adoption", "Simplified treasury management"],
+      uniqueValue: "First L1 blockchain with stablecoin-native gas architecture"
     },
-    "sub-second": {
-      name: "Sub-second Finality", 
-      description: "Transactions confirm in under 1 second, enabling real-time dApp experiences",
-      benefits: ["Lightning fast confirmations", "Better UX", "Real-time applications"]
-    },
-    "arcflow": {
-      name: "ArcFlow Finance",
-      description: "Native DeFi ecosystem on Arc Network with lending, borrowing, and yield farming",
-      benefits: ["Native DeFi", "Integrated ecosystem", "High yields"]
+    "deterministic-finality": {
+      name: "Deterministic Finality",
+      description: "Transactions achieve true finality in sub-second timeframes - no probabilistic confirmation waiting. When a transaction is confirmed, it's final forever.",
+      benefits: ["Real-time settlement for payments", "Instant on-chain confirmations", "No reorg risk", "Enterprise-grade reliability"],
+      uniqueValue: "Malachite consensus ensures absolute transaction finality"
     },
     "malachite": {
       name: "Malachite Consensus",
-      description: "Innovative consensus mechanism providing high throughput and security",
-      benefits: ["High TPS", "Strong security", "Energy efficient"]
+      description: "Arc's bespoke consensus layer built for financial infrastructure. Combines BFT-style finality with high throughput for stablecoin-native workloads.",
+      benefits: ["High TPS capacity", "Byzantine fault tolerance", "Energy efficient", "Optimized for value transfer"],
+      uniqueValue: "Custom-built for stablecoin finance use cases"
     },
-    "testnet": {
-      name: "Testnet Participation",
-      description: "Early adopters can participate in Arc Testnet to explore features and potentially qualify for rewards",
-      benefits: ["Early access", "Potential rewards", "Community building"]
+    "evm-compatible": {
+      name: "Full EVM Compatibility",
+      description: "Deploy existing Solidity contracts without modification. Arc supports the complete EVM toolchain including Hardhat, Foundry, and all standard development tools.",
+      benefits: ["Easy migration from Ethereum", "Existing tooling works", "Large developer talent pool", "Battle-tested smart contract patterns"],
+      uniqueValue: "Enterprise blockchain with full Ethereum compatibility"
+    },
+    "stable-fees": {
+      name: "Stable Fee Architecture",
+      description: "Transaction fees are denominated in USDC with predictable pricing, enabling businesses to accurately forecast on-chain costs.",
+      benefits: ["Budget certainty", "No fee spikes", "Transparent pricing", "Business-friendly economics"],
+      uniqueValue: "First L1 with truly stable and predictable gas costs"
     }
   },
-  dApps: ["ArcFlow Finance", "ArcSwap", "ArcBridge", "ArcNFT Marketplace"],
-  hashtags: ["#ArcNetwork", "#Web3", "#DeFi", "#Blockchain", "#Crypto", "#Testnet"]
+  ecosystem: {
+    categories: {
+      trading: ["Curve", "Dromos Labs", "Auros", "B2C2", "Cumberland"],
+      infrastructure: ["Alchemy", "Blockdaemon", "Chainlink", "dRPC", "Blockscout"],
+      wallets: ["Fireblocks", "BitGo", "Crossmint", "Dynamic", "Exodus", "Bron"],
+      payments: ["Bridge", "Copperx", "Corpay", "dLocal", "EBANX"],
+      defi: ["Centrifuge", "Morpho"],
+      banks: ["Deutsche Bank", "Commerzbank", "BTG Pactual", "Bank Frick", "Emirates NBD", "First Abu Dhabi Bank", "BNY", "Absa"],
+      stablecoins: ["Circle (USDC)", "AllUnity", "Avenia", "BDACs (KRW1)", "Bitso/Juno"]
+    },
+    keyPartners: ["Circle", "BlackRock", "Coinbase", "Chainlink", "Deutsche Bank", "Alchemy", "Fireblocks"],
+    useCases: [
+      "Global cross-border payments",
+      "FX and remittance settlements",
+      "Capital markets infrastructure",
+      "Stablecoin DeFi protocols",
+      "Tokenized real-world assets (RWA)",
+      "Enterprise treasury management",
+      "B2B payment rails"
+    ]
+  },
+  hashtags: {
+    primary: ["#ArcNetwork", "#USDC", "#Stablecoins"],
+    secondary: ["#DeFi", "#Web3", "#Blockchain", "#Crypto", "#Fintech"],
+    technical: ["#Layer1", "#EVM", "#SmartContracts", "#DeterministicFinality"]
+  }
 };
 
 const CAMPAIGN_TYPE_PROMPTS: Record<string, string> = {
-  "product-launch": "Create an exciting product launch announcement that generates hype and FOMO",
-  "community-event": "Write about a community event or milestone that brings people together",
-  "educational": "Create an educational post that teaches something valuable about the technology",
-  "meme-campaign": "Write a fun, memeable post with humor that the crypto community will appreciate",
-  "defi-promotion": "Create a post promoting DeFi opportunities and financial benefits"
+  "product-launch": "Create an exciting product launch announcement that generates anticipation and highlights Arc's unique value proposition",
+  "community-event": "Write about a community milestone or event that celebrates Arc's growing ecosystem and early adopters",
+  "educational": "Create an educational post that teaches developers and users about Arc's innovative technology in an accessible way",
+  "meme-campaign": "Write a fun, shareable post with crypto-native humor that the DeFi community will appreciate and want to share",
+  "defi-promotion": "Create a post highlighting DeFi opportunities on Arc, emphasizing stable fees and fast finality",
+  "partnership": "Announce or celebrate a partnership highlighting ecosystem growth and institutional adoption",
+  "testnet": "Encourage testnet participation with clear value propositions for early builders and users"
 };
 
 const TONE_MODIFIERS: Record<string, string> = {
-  "professional": "Use professional, corporate language suitable for investors and institutions",
-  "hype": "Use energetic, exciting language with emojis to build maximum hype",
-  "educational": "Use clear, explanatory language that teaches and informs",
-  "degen": "Use crypto-native slang, abbreviations, and degen culture references",
-  "technical": "Include technical details and specifications for developer audience"
+  "professional": "Use polished, corporate language suitable for institutional investors, enterprises, and traditional finance audiences",
+  "hype": "Use energetic, exciting language with strategic emojis to build momentum and FOMO",
+  "educational": "Use clear, jargon-free explanations that make complex concepts accessible to newcomers",
+  "degen": "Use crypto-native slang, abbreviations (gm, wagmi, ngmi), and degen culture references authentically",
+  "technical": "Include specific technical details, specs, and developer-focused information"
 };
 
 serve(async (req) => {
@@ -77,79 +114,104 @@ serve(async (req) => {
       );
     }
 
-    const ANTHROPIC_API_KEY = Deno.env.get("ANTHROPIC_API_KEY");
-    const ANTHROPIC_BASE_URL = Deno.env.get("ANTHROPIC_BASE_URL") || "https://api.z.ai/api/anthropic";
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
-    if (!ANTHROPIC_API_KEY) {
-      console.error("ANTHROPIC_API_KEY not configured");
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not configured");
       return new Response(
         JSON.stringify({ error: "AI service not configured" }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Build context from selected Arc features
+    // Build comprehensive context from selected Arc features
     const selectedFeatures = arcContext.map((id: string) => {
-      const feature = ARC_CONTEXT.features[id as keyof typeof ARC_CONTEXT.features];
-      return feature ? `${feature.name}: ${feature.description}` : null;
-    }).filter(Boolean).join("\n");
+      const feature = ARC_KNOWLEDGE_BASE.coreFeatures[id as keyof typeof ARC_KNOWLEDGE_BASE.coreFeatures];
+      if (feature) {
+        return `${feature.name}:
+- ${feature.description}
+- Key benefits: ${feature.benefits.join(', ')}
+- Unique value: ${feature.uniqueValue}`;
+      }
+      return null;
+    }).filter(Boolean).join("\n\n");
 
     // Build tone instructions
     const toneInstructions = tones.map((t: string) => TONE_MODIFIERS[t] || "").filter(Boolean).join(". ");
 
-    const systemPrompt = `You are an expert Web3 marketing copywriter creating campaign content for Arc Network.
+    // Select relevant hashtags based on context
+    const relevantHashtags = [
+      ...ARC_KNOWLEDGE_BASE.hashtags.primary,
+      ...ARC_KNOWLEDGE_BASE.hashtags.secondary.slice(0, 2)
+    ];
 
-ABOUT ARC NETWORK:
-${ARC_CONTEXT.network.name} is a ${ARC_CONTEXT.network.type} using ${ARC_CONTEXT.network.consensus}.
-Currently in testnet phase: ${ARC_CONTEXT.network.testnet}
+    const systemPrompt = `You are an expert Web3 marketing copywriter specializing in creating viral, engaging content for Arc Network.
 
-KEY FEATURES TO HIGHLIGHT:
+=== ARC NETWORK KNOWLEDGE BASE ===
+
+ABOUT ARC:
+${ARC_KNOWLEDGE_BASE.network.name} - ${ARC_KNOWLEDGE_BASE.network.tagline}
+${ARC_KNOWLEDGE_BASE.network.description}
+
+NETWORK STATUS:
+- Testnet: ${ARC_KNOWLEDGE_BASE.network.testnet.name} is LIVE
+- Chain ID: ${ARC_KNOWLEDGE_BASE.network.testnet.chainId}
+- Explorer: ${ARC_KNOWLEDGE_BASE.network.testnet.explorer}
+
+=== SELECTED FEATURES TO HIGHLIGHT ===
 ${selectedFeatures}
 
-ECOSYSTEM dApps: ${ARC_CONTEXT.dApps.join(", ")}
+=== ECOSYSTEM CONTEXT ===
+Key Partners: ${ARC_KNOWLEDGE_BASE.ecosystem.keyPartners.join(', ')}
+Use Cases: ${ARC_KNOWLEDGE_BASE.ecosystem.useCases.slice(0, 4).join(', ')}
+Trading: ${ARC_KNOWLEDGE_BASE.ecosystem.categories.trading.join(', ')}
+Infrastructure: ${ARC_KNOWLEDGE_BASE.ecosystem.categories.infrastructure.join(', ')}
 
-RULES:
-1. Keep the caption under 280 characters for X/Twitter compatibility
-2. Be creative and unique - avoid generic crypto phrases
-3. Include 2-3 relevant hashtags from: ${ARC_CONTEXT.hashtags.join(", ")}
-4. Do NOT include fake statistics or unverifiable claims
-5. Do NOT promise guaranteed returns or financial advice
-6. Make each caption unique - vary structure, hooks, and angles
-7. Include appropriate emojis for visual appeal
-8. Focus on genuine value propositions
+=== CAMPAIGN CONTEXT ===
+Campaign Type: ${CAMPAIGN_TYPE_PROMPTS[campaignType] || "Create engaging content"}
+Tone: ${toneInstructions}
 
-TONE: ${toneInstructions}
-
-CAMPAIGN TYPE: ${CAMPAIGN_TYPE_PROMPTS[campaignType] || "Create engaging content"}`;
+=== STRICT RULES ===
+1. MAXIMUM 280 characters for X/Twitter compatibility
+2. Be creative and unique - avoid generic phrases like "the future of finance"
+3. Include 2-3 relevant hashtags from: ${relevantHashtags.join(", ")}
+4. NEVER include fake statistics or unverifiable claims
+5. NEVER promise guaranteed returns or financial advice
+6. Each caption MUST be unique in structure, hook, and angle
+7. Use appropriate emojis strategically (not excessive)
+8. Focus on genuine, specific value propositions
+9. Create urgency without being manipulative
+10. Make it shareable and conversation-starting`;
 
     const userPrompt = customInput 
-      ? `Create a unique campaign caption incorporating this angle: "${customInput}"`
-      : "Create a unique, engaging campaign caption that stands out";
+      ? `Create a unique, viral-worthy campaign caption that incorporates this specific angle: "${customInput}"
 
-    console.log("Generating caption for campaign type:", campaignType);
-    console.log("Using Z.AI Anthropic API at:", ANTHROPIC_BASE_URL);
+Remember: 280 characters max, be specific about Arc's technology, make it shareable.`
+      : `Create a unique, engaging campaign caption that stands out from typical crypto marketing.
 
-    // Call Z.AI Anthropic API
-    const response = await fetch(`${ANTHROPIC_BASE_URL}/v1/messages`, {
+Remember: 280 characters max, highlight a specific Arc feature, make it conversation-worthy.`;
+
+    console.log("Layer 1: Generating caption for campaign type:", campaignType);
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
-        "x-api-key": ANTHROPIC_API_KEY,
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
-        "anthropic-version": "2023-06-01"
       },
       body: JSON.stringify({
-        model: "claude-sonnet-4-20250514",
-        max_tokens: 300,
-        system: systemPrompt,
+        model: "google/gemini-3-flash-preview",
         messages: [
+          { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
-        ]
+        ],
+        max_tokens: 300,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Z.AI API error:", response.status, errorText);
+      console.error("Lovable AI error:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(
@@ -157,10 +219,10 @@ CAMPAIGN TYPE: ${CAMPAIGN_TYPE_PROMPTS[campaignType] || "Create engaging content
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
-      if (response.status === 401) {
+      if (response.status === 402) {
         return new Response(
-          JSON.stringify({ error: "Invalid API key configuration" }),
-          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          JSON.stringify({ error: "Payment required. Please add credits to your workspace." }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
@@ -171,10 +233,7 @@ CAMPAIGN TYPE: ${CAMPAIGN_TYPE_PROMPTS[campaignType] || "Create engaging content
     }
 
     const data = await response.json();
-    console.log("Z.AI response:", JSON.stringify(data).substring(0, 500));
-    
-    // Extract caption from Anthropic response format
-    const caption = data.content?.[0]?.text?.trim();
+    const caption = data.choices?.[0]?.message?.content?.trim();
 
     if (!caption) {
       console.error("No caption generated:", data);

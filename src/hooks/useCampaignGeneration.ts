@@ -40,8 +40,10 @@ export function useCampaignGeneration() {
     setError(null);
 
     try {
-      // Step 1: Generate caption
-      console.log('Generating caption...');
+      // ========================================
+      // LAYER 1: Generate caption from Arc Network knowledge
+      // ========================================
+      console.log('🔵 Layer 1: Generating caption from Arc Network knowledge...');
       const captionResponse = await supabase.functions.invoke('generate-caption', {
         body: {
           campaignType: campaignData.campaignType,
@@ -74,19 +76,49 @@ export function useCampaignGeneration() {
       });
 
       toast.success('Caption generated!', { icon: '✍️' });
+      console.log('✅ Layer 1 complete:', caption.substring(0, 50) + '...');
 
-      // Step 2: Generate image
-      console.log('Generating image...');
+      // ========================================
+      // LAYER 2: Generate visual prompt from caption + knowledge
+      // ========================================
+      console.log('🟡 Layer 2: Generating visual prompt from caption...');
+      let visualPrompt: string | null = null;
+      
+      try {
+        const promptResponse = await supabase.functions.invoke('generate-image-prompt', {
+          body: {
+            caption,
+            imageStyle: campaignData.imageStyle,
+            campaignType: campaignData.campaignType,
+            arcContext: campaignData.arcContext
+          }
+        });
+
+        if (promptResponse.error) {
+          console.warn('Layer 2 warning - falling back to direct generation:', promptResponse.error);
+        } else {
+          visualPrompt = promptResponse.data?.visualPrompt;
+          console.log('✅ Layer 2 complete: Visual prompt generated');
+        }
+      } catch (layer2Error) {
+        console.warn('Layer 2 failed, proceeding with fallback:', layer2Error);
+      }
+
+      // ========================================
+      // LAYER 3: Generate image from visual prompt
+      // ========================================
+      console.log('🟢 Layer 3: Generating image from visual prompt...');
       const imageResponse = await supabase.functions.invoke('generate-image', {
         body: {
           caption,
           imageStyle: campaignData.imageStyle,
-          campaignType: campaignData.campaignType
+          campaignType: campaignData.campaignType,
+          visualPrompt // Pass the AI-generated visual prompt if available
         }
       });
 
       if (imageResponse.error) {
-        console.error('Image generation failed:', imageResponse.error);
+        console.error('Layer 3 failed:', imageResponse.error);
         setGeneratedCampaign(prev => prev ? {
           ...prev,
           imageStatus: 'failed'
@@ -100,6 +132,7 @@ export function useCampaignGeneration() {
           imageStatus: 'completed'
         } : null);
         toast.success('Image generated!', { icon: '🎨' });
+        console.log('✅ Layer 3 complete: Image generated successfully');
       }
 
       return { success: true, campaignId };
