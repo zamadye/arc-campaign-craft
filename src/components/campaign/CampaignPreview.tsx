@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   RefreshCw, Edit3, Coins, Heart, MessageCircle, Repeat2, Share, 
-  CheckCircle, ExternalLink, Loader2 
+  CheckCircle, ExternalLink, Loader2, Twitter
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -97,6 +97,32 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
     }
   };
 
+  // Generate Share to X URL
+  const generateShareToXUrl = () => {
+    if (!campaign) return '';
+    
+    // Create the tweet text with caption and NFT link
+    let tweetText = campaign.caption;
+    
+    // Add the NFT marketplace link if minted
+    if (tokenId && txHash) {
+      const nftUrl = `https://testnet.arcscan.app/tx/${txHash}`;
+      tweetText += `\n\n🎨 Minted as NFT on Arc Network\n${nftUrl}`;
+    }
+    
+    // Encode for URL
+    const encodedText = encodeURIComponent(tweetText);
+    
+    return `https://twitter.com/intent/tweet?text=${encodedText}`;
+  };
+
+  const handleShareToX = () => {
+    const shareUrl = generateShareToXUrl();
+    if (shareUrl) {
+      window.open(shareUrl, '_blank', 'noopener,noreferrer,width=600,height=400');
+    }
+  };
+
   // Empty state
   if (!campaign && !isGenerating) {
     return (
@@ -161,7 +187,8 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
                 >
                   <div className="text-center">
                     <div className="w-12 h-12 mx-auto mb-3 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-                    <p className="text-xs text-muted-foreground">Generating image...</p>
+                    <p className="text-xs text-muted-foreground">Generating image with AI...</p>
+                    <p className="text-xs text-muted-foreground/60 mt-1">3-Layer AI Pipeline</p>
                   </div>
                 </motion.div>
               ) : campaign?.imageUrl ? (
@@ -200,7 +227,11 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
               <Heart className="w-4 h-4" />
               <span>512</span>
             </button>
-            <button className="flex items-center gap-1 hover:text-primary transition-colors">
+            <button 
+              className="flex items-center gap-1 hover:text-primary transition-colors"
+              onClick={handleShareToX}
+              title="Share to X"
+            >
               <Share className="w-4 h-4" />
             </button>
           </div>
@@ -257,6 +288,16 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
                 Edit Caption
               </Button>
             </div>
+
+            {/* Share to X Button */}
+            <Button 
+              variant="outline" 
+              className="w-full bg-[#1DA1F2]/10 border-[#1DA1F2]/30 hover:bg-[#1DA1F2]/20 text-[#1DA1F2]"
+              onClick={handleShareToX}
+            >
+              <Twitter className="w-4 h-4 mr-2" />
+              Share to X
+            </Button>
             
             <Button 
               variant="gradient" 
@@ -307,6 +348,15 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
                 </a>
               </div>
             </div>
+
+            {/* Share to X after minting */}
+            <Button 
+              className="w-full bg-[#1DA1F2] hover:bg-[#1DA1F2]/90 text-white"
+              onClick={handleShareToX}
+            >
+              <Twitter className="w-4 h-4 mr-2" />
+              Share NFT to X
+            </Button>
             
             <Button 
               variant="outline" 
@@ -364,6 +414,15 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
             </DialogDescription>
             
             <div className="space-y-3">
+              {/* Primary Share to X CTA */}
+              <Button 
+                className="w-full bg-[#1DA1F2] hover:bg-[#1DA1F2]/90 text-white"
+                onClick={handleShareToX}
+              >
+                <Twitter className="w-4 h-4 mr-2" />
+                Share Your NFT on X
+              </Button>
+              
               <Button 
                 variant="gradient" 
                 className="w-full"

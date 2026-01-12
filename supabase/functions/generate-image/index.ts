@@ -5,82 +5,121 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Image style prompts for consistent generation
-const IMAGE_STYLE_PROMPTS: Record<string, string> = {
-  "cyberpunk": "cyberpunk aesthetic, neon lights, futuristic cityscape, dark background with cyan and purple glow, high tech blockchain visualization, digital art style",
-  "minimalist": "minimalist design, clean lines, simple geometric shapes, white and cyan color scheme, modern and elegant, negative space, professional tech aesthetic",
-  "gradient": "abstract gradient art, flowing colors transitioning from deep blue to cyan to green, smooth curves, modern digital art, tech-inspired organic shapes",
-  "blueprint": "technical blueprint style, dark blue background, white and cyan wireframe drawings, circuit patterns, engineering aesthetic, grid overlay, technical diagrams",
-  "space": "cosmic space theme, stars and nebulae, deep purple and blue galaxy, floating crypto symbols, ethereal glow, sci-fi atmosphere, blockchain in space visualization"
-};
-
-// Arc Network branding elements
-const ARC_BRANDING = {
-  colors: ["electric cyan (#00D9FF)", "deep space blue (#0A0E27)", "USDC green (#26A17B)"],
-  elements: ["Arc logo stylized", "blockchain nodes", "transaction flow visualization", "USDC symbols"],
-  atmosphere: "futuristic, cutting-edge technology, financial innovation"
-};
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { caption, imageStyle, campaignType } = await req.json();
+    const { caption, imageStyle, campaignType, visualPrompt } = await req.json();
 
-    if (!caption || !imageStyle) {
+    if (!caption) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields: caption, imageStyle" }),
+        JSON.stringify({ error: "Missing required field: caption" }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const POLLINATIONS_API_KEY = Deno.env.get("POLLINATIONS_API_KEY");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     
-    // Pollinations AI can work without API key for basic usage, but we'll use it if available
-    console.log("Pollinations API key configured:", !!POLLINATIONS_API_KEY);
-
-    const stylePrompt = IMAGE_STYLE_PROMPTS[imageStyle] || IMAGE_STYLE_PROMPTS["cyberpunk"];
-
-    // Create a comprehensive image prompt
-    const imagePrompt = `${stylePrompt}, promotional image for Arc Network blockchain platform, based on: ${caption.substring(0, 150)}, colors: ${ARC_BRANDING.colors.join(", ")}, elements: ${ARC_BRANDING.elements.join(", ")}, ${ARC_BRANDING.atmosphere}, no text or words, high quality, professional marketing visual, ultra high resolution, 16:9 aspect ratio`;
-
-    console.log("Generating image with Pollinations AI, style:", imageStyle);
-
-    // Pollinations AI Image Generation endpoint
-    // Using text-to-image endpoint with proper encoding
-    const encodedPrompt = encodeURIComponent(imagePrompt);
-    
-    // Build URL with parameters
-    let pollinationsUrl = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=576&nologo=true&seed=${Date.now()}`;
-    
-    // Add API key if available
-    if (POLLINATIONS_API_KEY) {
-      pollinationsUrl += `&token=${POLLINATIONS_API_KEY}`;
-    }
-
-    console.log("Pollinations URL generated");
-
-    // Verify the image can be accessed by making a HEAD request
-    const checkResponse = await fetch(pollinationsUrl, { method: 'HEAD' });
-    
-    if (!checkResponse.ok) {
-      console.error("Pollinations API error:", checkResponse.status);
+    if (!LOVABLE_API_KEY) {
+      console.error("LOVABLE_API_KEY not configured");
       return new Response(
-        JSON.stringify({ error: "Image generation failed" }),
+        JSON.stringify({ error: "AI service not configured" }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log("Image generated successfully");
+    // Use provided visual prompt or create a basic one
+    let imagePrompt: string;
+    
+    if (visualPrompt) {
+      // Layer 3: Use the AI-generated visual prompt from Layer 2
+      imagePrompt = visualPrompt;
+      console.log("Layer 3: Using AI-generated visual prompt");
+    } else {
+      // Fallback: Create a basic prompt from caption
+      const styleDescriptions: Record<string, string> = {
+        "cyberpunk": "cyberpunk aesthetic, neon cyan and magenta lights, futuristic dark cityscape, holographic blockchain visualization",
+        "minimalist": "minimalist design, clean geometric shapes, white background with cyan accents, elegant negative space",
+        "gradient": "abstract gradient art, flowing colors from deep blue to cyan to teal, organic shapes, ethereal glow",
+        "blueprint": "technical blueprint style, dark blue background, white wireframe drawings, engineering grid overlay",
+        "space": "cosmic space theme, deep purple nebulae, stars, blockchain constellation patterns, ethereal sci-fi atmosphere"
+      };
+      
+      const style = styleDescriptions[imageStyle] || styleDescriptions["cyberpunk"];
+      imagePrompt = `${style}, promotional marketing image for Arc Network blockchain, abstract visualization of: ${caption.substring(0, 100)}, no text or words, ultra high resolution, 16:9 aspect ratio, professional marketing quality, electric cyan (#00D9FF) and deep space blue (#0A0E27) color palette`;
+      console.log("Layer 3: Using fallback prompt generation");
+    }
+
+    console.log("Generating image with Lovable AI (Nano Banana)...");
+    console.log("Prompt preview:", imagePrompt.substring(0, 150) + "...");
+
+    // Use Lovable AI image generation (Nano Banana model)
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-image-preview",
+        messages: [
+          {
+            role: "user",
+            content: `Generate a stunning 16:9 promotional image for social media marketing: ${imagePrompt}`
+          }
+        ],
+        modalities: ["image", "text"]
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Lovable AI image generation error:", response.status, errorText);
+      
+      if (response.status === 429) {
+        return new Response(
+          JSON.stringify({ error: "Rate limit exceeded. Please try again later." }),
+          { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      if (response.status === 402) {
+        return new Response(
+          JSON.stringify({ error: "Payment required. Please add credits to your workspace." }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
+      return new Response(
+        JSON.stringify({ error: "Image generation failed", details: errorText }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const data = await response.json();
+    console.log("AI response received");
+    
+    // Extract the generated image from the response
+    const imageData = data.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+    
+    if (!imageData) {
+      console.error("No image in response:", JSON.stringify(data).substring(0, 500));
+      return new Response(
+        JSON.stringify({ error: "No image generated" }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    console.log("Image generated successfully (base64 data URL)");
 
     return new Response(
       JSON.stringify({ 
-        imageUrl: pollinationsUrl,
+        imageUrl: imageData,
         metadata: {
           style: imageStyle,
-          generatedAt: new Date().toISOString()
+          generatedAt: new Date().toISOString(),
+          method: visualPrompt ? "3-layer-ai" : "fallback"
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
