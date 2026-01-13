@@ -110,8 +110,17 @@ serve(async (req) => {
 
         const walletAddress = siweResult.address!;
         const email = `${walletAddress}@wallet.local`;
-        // Use wallet address as password basis (this is safe because SIWE already verified ownership)
-        const password = `siwe_${walletAddress}_${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')?.slice(0, 16)}`;
+        
+        // Generate cryptographically secure password using SHA-256 hash
+        // This ensures passwords are non-predictable even if service key is partially exposed
+        const STATIC_SALT = 'arc_intent_protocol_v1_2026';
+        const encoder = new TextEncoder();
+        const keyMaterial = encoder.encode(
+          `${walletAddress}:${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}:${STATIC_SALT}:siwe_auth`
+        );
+        const hashBuffer = await crypto.subtle.digest('SHA-256', keyMaterial);
+        const hashArray = Array.from(new Uint8Array(hashBuffer));
+        const password = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 
         console.log(`[AuthService] SIWE verified for wallet: ${walletAddress}`);
 
