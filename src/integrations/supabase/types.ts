@@ -128,6 +128,7 @@ export type Database = {
           id: string
           nfts_minted: number
           updated_at: string
+          user_id: string | null
           username: string | null
           wallet_address: string
         }
@@ -137,6 +138,7 @@ export type Database = {
           id?: string
           nfts_minted?: number
           updated_at?: string
+          user_id?: string | null
           username?: string | null
           wallet_address: string
         }
@@ -146,6 +148,7 @@ export type Database = {
           id?: string
           nfts_minted?: number
           updated_at?: string
+          user_id?: string | null
           username?: string | null
           wallet_address?: string
         }

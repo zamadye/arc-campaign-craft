@@ -40,3 +40,15 @@ verify_jwt = false
 
 [functions.generate-image-prompt]
 verify_jwt = false
+
+[functions.auth-service]
+verify_jwt = false
+
+[functions.campaign-service]
+verify_jwt = false
+
+[functions.artifact-service]
+verify_jwt = false
+
+[functions.intent-proof-service]
+verify_jwt = false
