@@ -4,12 +4,14 @@ import { useWeb3Modal } from '@web3modal/wagmi/react';
 import { formatUnits } from 'viem';
 import toast from 'react-hot-toast';
 import { arcTestnet } from '@/lib/wagmi';
+import { supabase } from '@/integrations/supabase/client';
 import { 
   createSiweMessage, 
   formatSiweMessage, 
   generateNonce,
   type SiweMessage 
 } from '@/lib/siwe';
+import { Session, User } from '@supabase/supabase-js';
 
 interface SiweSession {
   message: SiweMessage;
@@ -28,6 +30,9 @@ interface WalletContextType {
   siweSession: SiweSession | null;
   isAuthenticated: boolean;
   isSigning: boolean;
+  // Supabase Auth state
+  supabaseUser: User | null;
+  supabaseSession: Session | null;
   // Actions
   connect: () => Promise<void>;
   disconnect: () => void;
@@ -65,6 +70,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
   
   const [siweSession, setSiweSession] = useState<SiweSession | null>(null);
   const [isSigning, setIsSigning] = useState(false);
+  const [supabaseUser, setSupabaseUser] = useState<User | null>(null);
+  const [supabaseSession, setSupabaseSession] = useState<Session | null>(null);
   
   const { data: balanceData } = useBalance({
     address: address,
@@ -98,10 +105,29 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
       }
     }
     
-    return true;
-  }, [siweSession, address]);
+    // Also check if we have Supabase session
+    return !!supabaseSession;
+  }, [siweSession, address, supabaseSession]);
 
-  // Load session from storage on mount
+  // Set up Supabase auth state listener
+  useEffect(() => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setSupabaseSession(session);
+        setSupabaseUser(session?.user ?? null);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSupabaseSession(session);
+      setSupabaseUser(session?.user ?? null);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  // Load SIWE session from storage on mount
   useEffect(() => {
     try {
       const stored = localStorage.getItem(SIWE_SESSION_KEY);
@@ -122,7 +148,62 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   }, [address]);
 
-  // Sign in with Ethereum
+  // Authenticate with backend after SIWE
+  const authenticateWithBackend = useCallback(async (
+    formattedMessage: string,
+    signature: string,
+    walletAddress: string
+  ): Promise<boolean> => {
+    try {
+      console.log('[WalletContext] Authenticating with backend...');
+      
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/auth-service/siwe-auth`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            message: formattedMessage,
+            signature,
+            address: walletAddress,
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('[WalletContext] Backend auth failed:', errorData);
+        return false;
+      }
+
+      const data = await response.json();
+      
+      if (data.session) {
+        // Set the Supabase session from backend response
+        const { error } = await supabase.auth.setSession({
+          access_token: data.session.access_token,
+          refresh_token: data.session.refresh_token,
+        });
+
+        if (error) {
+          console.error('[WalletContext] Failed to set Supabase session:', error);
+          return false;
+        }
+
+        console.log('[WalletContext] Supabase session established');
+      }
+
+      return true;
+    } catch (error) {
+      console.error('[WalletContext] Backend authentication error:', error);
+      return false;
+    }
+  }, []);
+
+  // Sign in with Ethereum (SIWE + Supabase Auth)
   const signIn = useCallback(async (): Promise<boolean> => {
     if (!address || !isCorrectNetwork) {
       toast.error('Please connect wallet and switch to Arc Testnet');
@@ -149,6 +230,18 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         account: address as `0x${string}`,
       });
       
+      // Authenticate with backend to create/get Supabase user
+      const backendSuccess = await authenticateWithBackend(
+        formattedMessage,
+        signature,
+        address
+      );
+
+      if (!backendSuccess) {
+        toast.error('Backend authentication failed');
+        return false;
+      }
+
       const session: SiweSession = {
         message,
         signature: signature as `0x${string}`,
@@ -172,25 +265,37 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     } finally {
       setIsSigning(false);
     }
-  }, [address, isCorrectNetwork, signMessageAsync]);
+  }, [address, isCorrectNetwork, signMessageAsync, authenticateWithBackend]);
 
-  // Sign out (clear session)
-  const signOut = useCallback(() => {
+  // Sign out (clear both SIWE and Supabase sessions)
+  const signOut = useCallback(async () => {
     setSiweSession(null);
     localStorage.removeItem(SIWE_SESSION_KEY);
+    
+    // Sign out from Supabase
+    await supabase.auth.signOut();
+    
     toast.success('Signed out');
   }, []);
 
-  // Get auth headers for API calls
+  // Get auth headers for API calls (includes both SIWE and Supabase token)
   const getAuthHeaders = useCallback((): Record<string, string> => {
-    if (!siweSession) return {};
+    const headers: Record<string, string> = {};
     
-    return {
-      'X-SIWE-Message': siweSession.formattedMessage,
-      'X-SIWE-Signature': siweSession.signature,
-      'X-SIWE-Address': siweSession.message.address,
-    };
-  }, [siweSession]);
+    // Add SIWE headers for legacy edge function support
+    if (siweSession) {
+      headers['X-SIWE-Message'] = siweSession.formattedMessage;
+      headers['X-SIWE-Signature'] = siweSession.signature;
+      headers['X-SIWE-Address'] = siweSession.message.address;
+    }
+    
+    // Add Supabase auth token
+    if (supabaseSession?.access_token) {
+      headers['Authorization'] = `Bearer ${supabaseSession.access_token}`;
+    }
+    
+    return headers;
+  }, [siweSession, supabaseSession]);
 
   const connect = async () => {
     try {
@@ -201,8 +306,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   };
 
-  const disconnect = () => {
-    signOut();
+  const disconnect = async () => {
+    await signOut();
     wagmiDisconnect();
     toast.success('Wallet disconnected');
   };
@@ -217,16 +322,16 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
     }
   };
 
-  // Auto-prompt SIWE on connect if on correct network
+  // Auto-prompt SIWE on connect if on correct network and not already authenticated
   useEffect(() => {
-    if (isConnected && isCorrectNetwork && address && !siweSession && !isSigning) {
+    if (isConnected && isCorrectNetwork && address && !siweSession && !isSigning && !supabaseSession) {
       // Small delay to let the connection UI settle
       const timer = setTimeout(() => {
         signIn();
       }, 500);
       return () => clearTimeout(timer);
     }
-  }, [isConnected, isCorrectNetwork, address, siweSession, isSigning, signIn]);
+  }, [isConnected, isCorrectNetwork, address, siweSession, isSigning, signIn, supabaseSession]);
 
   // Clear session when address changes
   useEffect(() => {
@@ -257,6 +362,8 @@ export const WalletProvider: React.FC<WalletProviderProps> = ({ children }) => {
         siweSession,
         isAuthenticated: isAuthenticated(),
         isSigning,
+        supabaseUser,
+        supabaseSession,
         connect,
         disconnect,
         switchNetwork: switchNetworkHandler,
