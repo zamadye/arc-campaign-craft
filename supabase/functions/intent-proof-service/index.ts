@@ -116,11 +116,13 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
     const action = pathParts[pathParts.length - 1] || 'default';
+    const authHeader = req.headers.get('Authorization');
 
     console.log(`[IntentProofService] Action: ${action}, Method: ${req.method}`);
 
@@ -132,6 +134,33 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
+
+        // SECURITY: Require JWT authentication for proof recording
+        if (!authHeader?.startsWith('Bearer ')) {
+          return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Create an authenticated client to verify JWT
+        const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+          global: { headers: { Authorization: authHeader } }
+        });
+
+        const token = authHeader.replace('Bearer ', '');
+        const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getUser(token);
+        
+        if (claimsError || !claimsData?.user) {
+          console.warn('[IntentProofService] Invalid JWT:', claimsError?.message);
+          return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const userId = claimsData.user.id;
+        console.log(`[IntentProofService] Authenticated user: ${userId}`);
 
         const body = await req.json();
         const { 
@@ -159,7 +188,29 @@ serve(async (req) => {
           });
         }
 
-        // SIWE verification for proof recording (critical operation - REQUIRED in production)
+        // SECURITY: Verify wallet ownership - user's profile wallet must match request wallet
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('wallet_address')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (profileError || !profile) {
+          return new Response(JSON.stringify({ error: 'Profile not found. Please authenticate first.' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        if (profile.wallet_address.toLowerCase() !== userAddress.toLowerCase()) {
+          console.warn(`[IntentProofService] Wallet mismatch: ${userAddress} != ${profile.wallet_address}`);
+          return new Response(JSON.stringify({ error: 'Unauthorized: Wallet address does not match your profile' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // SIWE verification for proof recording (optional extra security layer)
         if (siwe) {
           const siweResult = await verifySiweSignature(siwe, userAddress);
           if (!siweResult.valid) {
@@ -252,22 +303,13 @@ serve(async (req) => {
           txHash: txHash || null
         };
 
-        // Lookup user_id from profiles table by wallet_address
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('user_id')
-          .eq('wallet_address', userAddress.toLowerCase())
-          .maybeSingle();
-
-        const userId = profile?.user_id || null;
-
         // Store in NFTs table as the proof record (reusing existing structure)
         const { data: nft, error: insertError } = await supabase
           .from('nfts')
           .insert({
             campaign_id: campaignId,
             wallet_address: userAddress,
-            user_id: userId, // Link to auth.users for RLS
+            user_id: userId, // Always set from authenticated JWT
             metadata_hash: campaignHash,
             status: 'minted',
             minted_at: new Date(timestamp).toISOString(),
@@ -287,7 +329,7 @@ serve(async (req) => {
           .update({ status: 'shared' })
           .eq('id', campaignId);
 
-        console.log(`[IntentProofService] Recorded proof for campaign: ${campaignId}, hash: ${campaignHash}`);
+        console.log(`[IntentProofService] Recorded proof for campaign: ${campaignId}, hash: ${campaignHash}, user: ${userId}`);
 
         return new Response(JSON.stringify({ 
           success: true,

@@ -118,11 +118,13 @@ serve(async (req) => {
   try {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const url = new URL(req.url);
     const pathParts = url.pathname.split('/').filter(Boolean);
     const action = pathParts[pathParts.length - 1] || 'default';
+    const authHeader = req.headers.get('Authorization');
 
     console.log(`[CampaignService] Action: ${action}, Method: ${req.method}`);
 
@@ -135,6 +137,33 @@ serve(async (req) => {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           });
         }
+
+        // SECURITY: Require JWT authentication for campaign creation
+        if (!authHeader?.startsWith('Bearer ')) {
+          return new Response(JSON.stringify({ error: 'Authentication required' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Create an authenticated client to verify JWT
+        const supabaseAuth = createClient(supabaseUrl, supabaseAnonKey, {
+          global: { headers: { Authorization: authHeader } }
+        });
+
+        const token = authHeader.replace('Bearer ', '');
+        const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getUser(token);
+        
+        if (claimsError || !claimsData?.user) {
+          console.warn('[CampaignService] Invalid JWT:', claimsError?.message);
+          return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        const userId = claimsData.user.id;
+        console.log(`[CampaignService] Authenticated user: ${userId}`);
 
         const body = await req.json();
         const { walletAddress, campaignType, arcContext, tones, customInput, imageStyle, intent } = body;
@@ -154,23 +183,36 @@ serve(async (req) => {
           });
         }
 
-        // Generate intent fingerprint if intent provided
-        const fingerprint = intent ? generateIntentFingerprint(intent) : null;
-
-        // Lookup user_id from profiles table by wallet_address
-        const { data: profile } = await supabase
+        // SECURITY: Verify wallet ownership - user's profile wallet must match request wallet
+        const { data: profile, error: profileError } = await supabase
           .from('profiles')
-          .select('user_id')
-          .eq('wallet_address', walletAddress.toLowerCase())
+          .select('wallet_address')
+          .eq('user_id', userId)
           .maybeSingle();
 
-        const userId = profile?.user_id || null;
+        if (profileError || !profile) {
+          return new Response(JSON.stringify({ error: 'Profile not found. Please authenticate first.' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        if (profile.wallet_address.toLowerCase() !== walletAddress.toLowerCase()) {
+          console.warn(`[CampaignService] Wallet mismatch: ${walletAddress} != ${profile.wallet_address}`);
+          return new Response(JSON.stringify({ error: 'Unauthorized: Wallet address does not match your profile' }), {
+            status: 403,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        // Generate intent fingerprint if intent provided
+        const fingerprint = intent ? generateIntentFingerprint(intent) : null;
 
         const { data: campaign, error } = await supabase
           .from('campaigns')
           .insert({
             wallet_address: walletAddress.toLowerCase(), // Normalize to lowercase
-            user_id: userId, // Link to auth.users for RLS
+            user_id: userId, // Always set from authenticated JWT
             campaign_type: campaignType || 'general',
             arc_context: arcContext || [],
             tones: tones || [],
@@ -188,7 +230,7 @@ serve(async (req) => {
           throw error;
         }
 
-        console.log(`[CampaignService] Created campaign: ${campaign.id}`);
+        console.log(`[CampaignService] Created campaign: ${campaign.id} for user: ${userId}`);
 
         return new Response(JSON.stringify({ 
           success: true, 
