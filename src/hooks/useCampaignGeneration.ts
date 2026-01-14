@@ -99,7 +99,9 @@ export function useCampaignGeneration() {
           imageStyle: campaignData.imageStyle,
           targetDApps: campaignData.targetDApps,
           intentCategory: campaignData.intentCategory,
-          walletAddress
+          actionOrder: campaignData.actionOrder,
+          timeWindow: campaignData.timeWindow,
+          walletAddress,
         }
       });
 
