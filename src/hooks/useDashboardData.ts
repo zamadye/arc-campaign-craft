@@ -38,11 +38,21 @@ export function useDashboardData() {
     setError(null);
 
     try {
-      // Fetch campaigns for current wallet
+      // SECURITY: Require authenticated session before querying
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // Not authenticated - RLS will block queries anyway
+        setCampaigns([]);
+        setActivities([]);
+        setIsLoading(false);
+        return;
+      }
+
+      // Fetch campaigns for current user (RLS enforces auth.uid() = user_id)
+      // Note: We don't filter by wallet_address because RLS already scopes to owner
       const { data: campaignData, error: campaignError } = await supabase
         .from('campaigns')
         .select('*')
-        .eq('wallet_address', address)
         .order('created_at', { ascending: false });
 
       if (campaignError) {
@@ -62,11 +72,10 @@ export function useDashboardData() {
 
       setCampaigns(transformedCampaigns);
 
-      // Fetch NFTs for activity
+      // Fetch NFTs for activity (RLS enforces auth.uid() = user_id)
       const { data: nftData, error: nftError } = await supabase
         .from('nfts')
         .select('*')
-        .eq('wallet_address', address)
         .order('created_at', { ascending: false });
 
       if (nftError) {

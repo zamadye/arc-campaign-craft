@@ -33,7 +33,17 @@ export const useProofs = () => {
   const fetchProofs = useCallback(async () => {
     setLoading(true);
     
-    // Fetch completed campaigns as proofs
+    // SECURITY: Require authenticated session before querying
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      // Not authenticated - cannot query user's proofs
+      setProofs([]);
+      setLoading(false);
+      return;
+    }
+
+    // Fetch completed campaigns for the authenticated user
+    // RLS enforces auth.uid() = user_id - only returns user's own campaigns
     const { data, error } = await supabase
       .from('campaigns')
       .select('*')

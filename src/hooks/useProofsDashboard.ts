@@ -54,7 +54,23 @@ export const useProofsDashboard = () => {
     setError(null);
 
     try {
-      // Fetch proofs with campaign data
+      // SECURITY: Require authenticated session before querying
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        // Not authenticated - cannot query user's proofs
+        setProofs([]);
+        setStats({
+          totalProofs: 0,
+          uniqueUsers: 0,
+          userProofs: 0,
+          verifiedCount: 0,
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Fetch proofs with campaign data (RLS enforces auth.uid() = user_id)
+      // Only returns proofs owned by the authenticated user
       const { data: proofsData, error: proofsError } = await supabase
         .from('nfts')
         .select(`
@@ -111,17 +127,14 @@ export const useProofsDashboard = () => {
 
       setProofs(transformedProofs);
 
-      // Calculate stats
+      // Calculate stats (now scoped to user's own data)
       const uniqueWallets = new Set(transformedProofs.map(p => p.wallet_address.toLowerCase()));
-      const userProofsCount = address 
-        ? transformedProofs.filter(p => p.wallet_address.toLowerCase() === address.toLowerCase()).length 
-        : 0;
       const verifiedCount = transformedProofs.filter(p => p.verified_at !== null).length;
 
       setStats({
         totalProofs: transformedProofs.length,
         uniqueUsers: uniqueWallets.size,
-        userProofs: userProofsCount,
+        userProofs: transformedProofs.length, // All proofs are user's own now
         verifiedCount,
       });
     } catch (err) {
@@ -160,10 +173,8 @@ export const useProofsDashboard = () => {
     };
   }, [fetchProofs]);
 
-  // Get proofs for current user only
-  const userProofs = address
-    ? proofs.filter(p => p.wallet_address.toLowerCase() === address.toLowerCase())
-    : [];
+  // All proofs are now user's own (RLS enforces this)
+  const userProofs = proofs;
 
   return {
     proofs,
