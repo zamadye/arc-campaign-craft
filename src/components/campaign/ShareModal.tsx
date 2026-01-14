@@ -71,18 +71,27 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   };
 
   // Share to Twitter
-  const shareToTwitter = async () => {
-    // Download image first
-    await downloadImage();
-
+  const shareToTwitter = () => {
     // Compose tweet text with campaign link
     const tweetText = `${campaign.caption}\n\n🔒 Recorded as structured intent on Arc Network\n\n${campaignLink}`;
-    
-    // Open Twitter composer
+
+    // Open Twitter composer immediately (avoids popup blockers)
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
     window.open(twitterUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
-    
-    toast.success('Twitter opened! Attach the downloaded image before posting.');
+
+    // Kick off download + copy text (best-effort)
+    void (async () => {
+      try {
+        await downloadImage();
+      } finally {
+        try {
+          await navigator.clipboard.writeText(tweetText);
+          toast.success('Tweet text copied. Attach the downloaded image before posting.');
+        } catch {
+          toast.success('Twitter opened! Attach the downloaded image before posting.');
+        }
+      }
+    })();
   };
 
   // Copy link to clipboard

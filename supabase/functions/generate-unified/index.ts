@@ -50,9 +50,17 @@ const ARC_KNOWLEDGE_BASE = {
 
 // Visual style guides for image generation
 const IMAGE_STYLE_GUIDES: Record<string, string> = {
-  "tech": "clean minimalist tech aesthetic, precise geometric shapes, electric cyan accents, white and deep blue palette, professional and polished, subtle grid patterns, floating UI elements",
-  "vibrant": "neon-lit cyberpunk aesthetic, holographic displays, cyan and magenta gradients, dark tech environment, glowing blockchain visualizations, energy streams",
-  "cosmic": "deep cosmic space backdrop, nebulae and stars, blockchain constellation patterns, ethereal glow, sci-fi grandeur, orbital trajectories, interstellar theme"
+  // Simplified UI styles
+  tech: "clean minimalist tech aesthetic, precise geometric shapes, electric cyan accents, white and deep blue palette, professional and polished, subtle grid patterns, floating UI elements",
+  vibrant: "neon-lit cyberpunk aesthetic, holographic displays, cyan and magenta gradients, dark tech environment, glowing blockchain visualizations, energy streams",
+  cosmic: "deep cosmic space backdrop, nebulae and stars, blockchain constellation patterns, ethereal glow, sci-fi grandeur, orbital trajectories, interstellar theme",
+
+  // Backwards-compatible style aliases (if clients send these)
+  minimalist: "clean minimalist tech aesthetic, precise geometric shapes, electric cyan accents, white and deep blue palette, professional and polished, subtle grid patterns, floating UI elements",
+  blueprint: "technical blueprint style, deep space blue background, white wireframe drawings, engineering grid overlay, cyan highlights, precise schematic lines",
+  cyberpunk: "neon-lit cyberpunk aesthetic, holographic displays, cyan and magenta gradients, dark tech environment, glowing blockchain visualizations, energy streams",
+  gradient: "abstract gradient art, flowing colors from deep blue to cyan to teal, organic shapes, ethereal glow, premium marketing lighting",
+  space: "deep cosmic space backdrop, nebulae and stars, blockchain constellation patterns, ethereal glow, sci-fi grandeur, orbital trajectories, interstellar theme",
 };
 
 // Campaign type context
@@ -63,34 +71,98 @@ const CAMPAIGN_CONTEXT: Record<string, string> = {
   "meme-campaign": "fun shareable crypto-native humor",
   "defi-promotion": "DeFi opportunities with stable fees and fast finality",
   "partnership": "ecosystem growth and institutional adoption",
-  "testnet": "testnet participation encouragement"
+  "testnet": "testnet participation encouragement",
 };
 
 // Tone modifiers
 const TONE_GUIDES: Record<string, string> = {
-  "professional": "polished corporate language for institutional audiences",
-  "hype": "energetic exciting language with strategic emojis",
-  "educational": "clear jargon-free explanations",
-  "degen": "crypto-native slang (gm, wagmi) and culture references",
-  "technical": "specific technical details and developer focus"
+  professional: "polished corporate language for institutional audiences",
+  hype: "energetic exciting language with strategic emojis",
+  educational: "clear jargon-free explanations",
+  degen: "crypto-native slang (gm, wagmi) and culture references",
+  technical: "specific technical details and developer focus",
 };
 
-// Validate caption has @ArcFlowFinance mention
-function validateCaption(caption: string): { valid: boolean; issues: string[] } {
+// DApp link registry (keep small + deterministic; only real URLs)
+const DAPP_REGISTRY: Record<string, { name: string; url: string }> = {
+  arcflow: { name: "ArcFlow Finance", url: "https://arcflow.finance" },
+  aave: { name: "Aave", url: "https://aave.com" },
+  maple: { name: "Maple", url: "https://maple.finance" },
+  morpho: { name: "Morpho", url: "https://morpho.org" },
+  centrifuge: { name: "Centrifuge", url: "https://centrifuge.io" },
+  superform: { name: "Superform", url: "https://superform.xyz" },
+  securitize: { name: "Securitize", url: "https://securitize.io" },
+  usyc: { name: "USYC (Circle)", url: "https://circle.com" },
+  across: { name: "Across Protocol", url: "https://across.to" },
+  stargate: { name: "Stargate", url: "https://stargate.finance" },
+  wormhole: { name: "Wormhole", url: "https://wormhole.com" },
+  alchemy: { name: "Alchemy", url: "https://alchemy.com" },
+  chainlink: { name: "Chainlink", url: "https://chain.link" },
+  thirdweb: { name: "thirdweb", url: "https://thirdweb.com" },
+  blockdaemon: { name: "Blockdaemon", url: "https://blockdaemon.com" },
+  blockscout: { name: "Blockscout", url: "https://testnet.arcscan.app" },
+  metamask: { name: "MetaMask", url: "https://metamask.io" },
+  rainbow: { name: "Rainbow", url: "https://rainbow.me" },
+  privy: { name: "Privy", url: "https://privy.io" },
+  "coinbase-wallet": { name: "Coinbase Wallet", url: "https://wallet.coinbase.com" },
+};
+
+function extractUrls(text: string): string[] {
+  const matches = text.match(/https?:\/\/[^\s)\]]+/g);
+  return matches ? Array.from(new Set(matches)) : [];
+}
+
+function resolveDApps(targetDApps: unknown): Array<{ id: string; name: string; url: string }> {
+  const ids = Array.isArray(targetDApps) ? targetDApps.filter((x) => typeof x === "string") as string[] : [];
+  const resolved = ids
+    .map((id) => {
+      const entry = DAPP_REGISTRY[id];
+      return entry ? { id, name: entry.name, url: entry.url } : null;
+    })
+    .filter(Boolean) as Array<{ id: string; name: string; url: string }>;
+
+  // Deterministic fallback
+  if (resolved.length >= 2) return resolved;
+  return [
+    { id: "arcflow", name: DAPP_REGISTRY.arcflow.name, url: DAPP_REGISTRY.arcflow.url },
+    { id: "aave", name: DAPP_REGISTRY.aave.name, url: DAPP_REGISTRY.aave.url },
+    { id: "across", name: DAPP_REGISTRY.across.name, url: DAPP_REGISTRY.across.url },
+  ];
+}
+
+// Validate caption has @ArcFlowFinance mention + line breaks + dApp links
+function validateCaption(caption: string, allowedLinks: string[]): { valid: boolean; issues: string[] } {
   const issues: string[] = [];
-  
+
   if (!caption.includes('@ArcFlowFinance')) {
     issues.push('missing_arcflow_mention');
   }
-  
+
+  // Expect multi-line formatting for readability ("No enter" issue)
+  const newlineCount = (caption.match(/\n/g) || []).length;
+  if (newlineCount < 2) {
+    issues.push('missing_linebreaks');
+  }
+
+  const urls = extractUrls(caption);
+  if (urls.length < 2) {
+    issues.push('missing_dapp_links');
+  } else {
+    const allowedSet = new Set(allowedLinks);
+    const hits = urls.filter((u) => allowedSet.has(u));
+    if (hits.length < 1) {
+      issues.push('wrong_links');
+    }
+  }
+
   if (caption.length < 150) {
     issues.push('too_short');
   }
-  
-  if (caption.length > 300) {
+
+  if (caption.length > 320) {
     issues.push('too_long');
   }
-  
+
   return { valid: issues.length === 0, issues };
 }
 
@@ -99,20 +171,29 @@ function injectArcFlowMention(caption: string): string {
   if (caption.includes('@ArcFlowFinance')) {
     return caption;
   }
-  
-  // Find good injection point
+
   const sentences = caption.split('. ');
   if (sentences.length > 1) {
     sentences[0] += ' via @ArcFlowFinance';
     return sentences.join('. ');
   }
-  
-  // Insert before hashtags or at end
+
   if (caption.includes('#')) {
     return caption.replace(/#/, '@ArcFlowFinance #');
   }
-  
+
   return caption + ' @ArcFlowFinance';
+}
+
+function injectDAppLinks(caption: string, links: string[]): string {
+  const urls = extractUrls(caption);
+  if (urls.length >= 2) return caption;
+
+  const chosen = links.slice(0, 3);
+  const linksLine = chosen.join(' ');
+
+  // Add a dedicated links line to keep tweet readable
+  return `${caption.trim()}\n\n${linksLine}`;
 }
 
 serve(async (req) => {
@@ -157,7 +238,9 @@ serve(async (req) => {
       customInput, 
       imageStyle,
       targetDApps,
-      intentCategory 
+      intentCategory,
+      actionOrder,
+      timeWindow,
     } = await req.json();
 
     if (!campaignType || !imageStyle) {
@@ -185,7 +268,17 @@ serve(async (req) => {
     const toneInstructions = (tones || ['hype']).map((t: string) => TONE_GUIDES[t] || '').filter(Boolean).join('. ');
     const styleGuide = IMAGE_STYLE_GUIDES[imageStyle] || IMAGE_STYLE_GUIDES["vibrant"];
     const campaignContext = CAMPAIGN_CONTEXT[campaignType] || "engaging blockchain content";
-    const dAppsContext = (targetDApps || []).join(', ') || 'ArcFlow Finance, Aave';
+
+    const selectedDApps = resolveDApps(targetDApps);
+    const dAppsContext = selectedDApps.map((d) => d.name).join(', ');
+    const allowedLinks = selectedDApps.map((d) => d.url);
+    const linksContext = allowedLinks.slice(0, 3).map((u) => `- ${u}`).join('\n');
+
+    const actionContext = Array.isArray(actionOrder) && actionOrder.length
+      ? actionOrder.slice(0, 6).join(' → ')
+      : 'Connect → Execute → Verify';
+
+    const timeContext = typeof timeWindow === 'string' && timeWindow ? timeWindow : 'none';
 
     // Unified system prompt
     const systemPrompt = `You are an expert Web3 marketing specialist for Arc Network. Your task is to generate BOTH a marketing caption AND an image prompt in a single response.
@@ -198,7 +291,13 @@ ${ARC_KNOWLEDGE_BASE.network.description}
 ${selectedFeatures}
 
 === ECOSYSTEM ===
-Target dApps: ${dAppsContext}
+Target dApps (names): ${dAppsContext}
+Allowed dApp links (MUST use 2-3 of these, exactly as written):
+${linksContext}
+
+Action order (intent steps): ${actionContext}
+Time window: ${timeContext}
+
 Partners: ${ARC_KNOWLEDGE_BASE.ecosystem.partners.join(', ')}
 
 === BRAND COLORS ===
@@ -212,37 +311,46 @@ ${styleGuide}
 === CRITICAL RULES ===
 
 FOR CAPTION:
-1. MANDATORY: Must include "@ArcFlowFinance" - this is NON-NEGOTIABLE
-2. Length: 200-280 characters (count carefully)
-3. Include 2-3 hashtags from: ${ARC_KNOWLEDGE_BASE.hashtags.join(', ')}
-4. Mention at least one target dApp by name
-5. Tone: ${toneInstructions}
-6. Be unique and authentic, avoid generic phrases
-7. NEVER promise guaranteed returns or make financial claims
+1. MANDATORY: Must include "@ArcFlowFinance" - NON-NEGOTIABLE
+2. Length: 200-280 characters (including line breaks)
+3. FORMAT: Use 4 lines exactly:
+   - Line 1: Hook (1 sentence)
+   - Line 2: What to do (mention at least 2 target dApps by name)
+   - Line 3: 2-3 dApp LINKS (plain URLs) from the allowed list
+   - Line 4: 2-3 hashtags from: ${ARC_KNOWLEDGE_BASE.hashtags.join(', ')}
+4. Tone: ${toneInstructions}
+5. Unique + concrete (refer to the action order)
+6. NEVER promise guaranteed returns or make financial claims
 
 FOR IMAGE PROMPT:
-1. Describe a visual scene (NOT text or logos)
-2. Use the brand colors specified
-3. Match the caption's theme and energy
-4. 16:9 aspect ratio, ultra high resolution
-5. Abstract/conceptual - no literal representations
-6. Professional marketing quality
+1. Must be DIFFERENT for each caption: include 4-6 distinct visual motifs tied to the caption + action order + chosen dApps
+2. Describe a visual scene (NO text, NO logos, NO UI screenshots)
+3. Use the brand colors specified
+4. Match the caption's theme and energy
+5. 16:9 aspect ratio, ultra high resolution
+6. Abstract/conceptual, professional marketing quality
 
 === OUTPUT FORMAT ===
 You MUST respond with ONLY valid JSON, no markdown, no explanations:
 {
-  "caption": "Your 200-280 character caption here with @ArcFlowFinance mention",
-  "imagePrompt": "Your detailed visual scene description for image generation"
+  "caption": "4-line caption with \\n line breaks, includes @ArcFlowFinance and 2-3 allowed URLs",
+  "imagePrompt": "Detailed scene description"
 }`;
 
     const userPrompt = customInput 
       ? `Create a unified campaign for Arc Network with this focus: "${customInput}"
 Campaign type: ${campaignContext}
-Remember: JSON only, include @ArcFlowFinance, 200-280 chars for caption.`
+Target dApps: ${dAppsContext}
+Action order: ${actionContext}
+Time window: ${timeContext}
+Return JSON only.`
       : `Create a unified campaign for Arc Network.
 Campaign type: ${campaignContext}
 Intent: ${intentCategory || 'DeFi'}
-Remember: JSON only, include @ArcFlowFinance, 200-280 chars for caption.`;
+Target dApps: ${dAppsContext}
+Action order: ${actionContext}
+Time window: ${timeContext}
+Return JSON only.`;
 
     console.log("Unified generation: Generating caption + image prompt together...");
 
@@ -325,18 +433,26 @@ Remember: JSON only, include @ArcFlowFinance, 200-280 chars for caption.`;
         }
 
         // Validate caption
-        const validation = validateCaption(caption);
+        const validation = validateCaption(caption, allowedLinks);
         if (!validation.valid) {
           console.warn("Caption validation failed:", validation.issues);
-          
-          // Apply fallback injection if only missing @ArcFlowFinance
-          if (validation.issues.includes('missing_arcflow_mention') && validation.issues.length === 1) {
+
+          // Apply deterministic fallbacks when possible
+          if (validation.issues.includes('missing_arcflow_mention')) {
             caption = injectArcFlowMention(caption);
-            console.log("Applied @ArcFlowFinance injection fallback");
-            break;
           }
-          
-          continue; // Retry for other issues
+          if (validation.issues.includes('missing_dapp_links') || validation.issues.includes('wrong_links')) {
+            caption = injectDAppLinks(caption, allowedLinks);
+          }
+
+          // Re-check after fallbacks; if still invalid, retry
+          const recheck = validateCaption(caption, allowedLinks);
+          if (!recheck.valid) {
+            continue;
+          }
+
+          console.log("Applied fallbacks and recovered a valid caption");
+          break;
         }
 
         // Valid response - break out of retry loop
@@ -358,11 +474,13 @@ Remember: JSON only, include @ArcFlowFinance, 200-280 chars for caption.`;
       );
     }
 
-    // Ensure @ArcFlowFinance is present (final safety net)
+    // Final safety nets
     if (!caption.includes('@ArcFlowFinance')) {
       caption = injectArcFlowMention(caption);
       console.log("Applied final @ArcFlowFinance safety injection");
     }
+
+    caption = injectDAppLinks(caption, allowedLinks);
 
     console.log("✅ Unified generation complete");
     console.log("Caption:", caption.substring(0, 80) + "...");
