@@ -57,6 +57,13 @@ export function useNFTMinting() {
     });
 
     try {
+      // SECURITY: Get authenticated user for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        throw new Error('Authentication required to mint NFT');
+      }
+      const userId = session.user.id;
+
       // Step 1: Generate metadata
       setMintingState(prev => ({ 
         ...prev, 
@@ -108,12 +115,13 @@ export function useNFTMinting() {
       const { data: nftData, error: dbError } = await supabase
         .from('nfts')
         .insert({
+          user_id: userId,
           campaign_id: campaignId,
           wallet_address: walletAddress.toLowerCase(),
           token_id: mintResult.tokenId,
           tx_hash: mintResult.txHash,
           metadata_hash: metadataHash,
-          mint_cost: MINT_COST_USDC,
+          proof_cost: MINT_COST_USDC,
           status: 'minted',
           minted_at: new Date().toISOString(),
         })
@@ -147,10 +155,11 @@ export function useNFTMinting() {
           })
           .eq('wallet_address', walletAddress.toLowerCase());
       } else {
-        // Create profile if doesn't exist
+        // Create profile if doesn't exist - requires user_id for RLS
         await supabase
           .from('profiles')
           .insert({
+            user_id: userId,
             wallet_address: walletAddress.toLowerCase(),
             nfts_minted: 1,
             campaigns_created: 1

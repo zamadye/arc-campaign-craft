@@ -241,12 +241,19 @@ export function useCampaignGeneration() {
     setError(null);
 
     try {
+      // SECURITY: Get authenticated user for RLS
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user?.id) {
+        throw new Error('Authentication required to save campaign');
+      }
+
       // Generate fingerprint from intent data
       const fingerprint = await generateFingerprint(campaignData);
       
       const { data, error: insertError } = await supabase
         .from('campaigns')
         .insert({
+          user_id: session.user.id,
           wallet_address: walletAddress,
           campaign_type: campaignData.campaignType,
           tones: campaignData.tones,
