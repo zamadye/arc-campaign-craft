@@ -29,7 +29,7 @@ interface CampaignPreviewProps {
   campaign: GeneratedCampaign | null;
   isGenerating: boolean;
   onRegenerate: () => void;
-  onUpdateCaption: (caption: string) => void;
+  onUpdateCaption: (caption: string) => Promise<boolean> | void;
   campaignData?: CampaignData;
   onComplete?: () => void;
   isCompleting?: boolean;
@@ -53,6 +53,7 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
   const [editedCaption, setEditedCaption] = useState('');
   const [showCompletionSuccess, setShowCompletionSuccess] = useState(false);
   const [showEditWarning, setShowEditWarning] = useState(false);
+  const [captionError, setCaptionError] = useState<string | null>(null);
 
   // Determine if content is frozen (finalized or shared)
   const isFrozen = campaignStatus === 'finalized' || campaignStatus === 'shared' || !!completedCampaignId;
@@ -84,9 +85,18 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
     onRegenerate();
   };
 
-  const handleEditSave = () => {
-    onUpdateCaption(editedCaption);
-    setIsEditModalOpen(false);
+  const handleEditSave = async () => {
+    // Validate @ArcFlowFinance mention
+    if (!editedCaption.includes('@ArcFlowFinance')) {
+      setCaptionError('Caption must include @ArcFlowFinance mention');
+      return;
+    }
+    
+    setCaptionError(null);
+    const result = await onUpdateCaption(editedCaption);
+    if (result !== false) {
+      setIsEditModalOpen(false);
+    }
   };
 
   const handleComplete = async () => {
@@ -415,11 +425,25 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <Textarea
-              value={editedCaption}
-              onChange={(e) => setEditedCaption(e.target.value.slice(0, 280))}
-              className="min-h-[150px]"
-            />
+            <div>
+              <Textarea
+                value={editedCaption}
+                onChange={(e) => {
+                  setEditedCaption(e.target.value.slice(0, 280));
+                  setCaptionError(null);
+                }}
+                className="min-h-[150px]"
+              />
+              {/* @ArcFlowFinance warning */}
+              {!editedCaption.includes('@ArcFlowFinance') && (
+                <p className="text-xs text-destructive mt-2">
+                  ⚠️ @ArcFlowFinance mention required for campaign attribution
+                </p>
+              )}
+              {captionError && (
+                <p className="text-xs text-destructive mt-2">{captionError}</p>
+              )}
+            </div>
             <div className="flex items-center justify-between">
               <span className="text-xs text-muted-foreground">
                 {editedCaption.length}/280
@@ -428,7 +452,11 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
                 <Button variant="outline" onClick={() => setIsEditModalOpen(false)}>
                   Cancel
                 </Button>
-                <Button variant="gradient" onClick={handleEditSave}>
+                <Button 
+                  variant="gradient" 
+                  onClick={handleEditSave}
+                  disabled={!editedCaption.includes('@ArcFlowFinance')}
+                >
                   Save Changes
                 </Button>
               </div>

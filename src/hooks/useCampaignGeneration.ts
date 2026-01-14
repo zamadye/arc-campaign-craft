@@ -47,6 +47,30 @@ async function generateFingerprint(campaignData: CampaignData): Promise<string> 
   return '0x' + hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
+// Validate @ArcFlowFinance mention
+function validateArcFlowMention(caption: string): boolean {
+  return caption.includes('@ArcFlowFinance');
+}
+
+// Inject @ArcFlowFinance if missing (client-side fallback)
+function injectArcFlowMention(caption: string): string {
+  if (caption.includes('@ArcFlowFinance')) {
+    return caption;
+  }
+  
+  const sentences = caption.split('. ');
+  if (sentences.length > 1) {
+    sentences[0] += ' via @ArcFlowFinance';
+    return sentences.join('. ');
+  }
+  
+  if (caption.includes('#')) {
+    return caption.replace(/#/, '@ArcFlowFinance #');
+  }
+  
+  return caption + ' @ArcFlowFinance';
+}
+
 export function useCampaignGeneration() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCompleting, setIsCompleting] = useState(false);
@@ -62,29 +86,37 @@ export function useCampaignGeneration() {
 
     try {
       // ========================================
-      // LAYER 1: Generate caption from Arc Network knowledge
+      // UNIFIED GENERATION: Caption + Image Prompt together
       // ========================================
-      console.log('🔵 Layer 1: Generating caption from Arc Network knowledge...');
-      const captionResponse = await supabase.functions.invoke('generate-caption', {
+      console.log('🔵 Unified generation: Creating caption + image prompt...');
+      
+      const unifiedResponse = await supabase.functions.invoke('generate-unified', {
         body: {
           campaignType: campaignData.campaignType,
           tones: campaignData.tones,
           arcContext: campaignData.arcContext,
           customInput: campaignData.customInput,
-          walletAddress,
-          intentCategory: campaignData.intentCategory,
+          imageStyle: campaignData.imageStyle,
           targetDApps: campaignData.targetDApps,
-          actionOrder: campaignData.actionOrder
+          intentCategory: campaignData.intentCategory,
+          walletAddress
         }
       });
 
-      if (captionResponse.error) {
-        throw new Error(captionResponse.error.message || 'Failed to generate caption');
+      if (unifiedResponse.error) {
+        throw new Error(unifiedResponse.error.message || 'Failed to generate campaign');
       }
 
-      const { caption } = captionResponse.data;
+      let { caption, imagePrompt } = unifiedResponse.data;
+      
       if (!caption) {
         throw new Error('No caption received from AI');
+      }
+
+      // Client-side validation of @ArcFlowFinance (safety net)
+      if (!validateArcFlowMention(caption)) {
+        console.warn('Caption missing @ArcFlowFinance, applying client fallback');
+        caption = injectArcFlowMention(caption);
       }
 
       const captionHash = await hashCaption(caption);
@@ -100,49 +132,25 @@ export function useCampaignGeneration() {
       });
 
       toast.success('Caption generated!', { icon: '✍️' });
-      console.log('✅ Layer 1 complete:', caption.substring(0, 50) + '...');
+      console.log('✅ Caption ready:', caption.substring(0, 50) + '...');
+      console.log('✅ @ArcFlowFinance included:', validateArcFlowMention(caption));
 
       // ========================================
-      // LAYER 2: Generate visual prompt from caption + knowledge
+      // IMAGE GENERATION: Use the unified image prompt
       // ========================================
-      console.log('🟡 Layer 2: Generating visual prompt from caption...');
-      let visualPrompt: string | null = null;
+      console.log('🟢 Generating image from unified prompt...');
       
-      try {
-        const promptResponse = await supabase.functions.invoke('generate-image-prompt', {
-          body: {
-            caption,
-            imageStyle: campaignData.imageStyle,
-            campaignType: campaignData.campaignType,
-            arcContext: campaignData.arcContext
-          }
-        });
-
-        if (promptResponse.error) {
-          console.warn('Layer 2 warning - falling back to direct generation:', promptResponse.error);
-        } else {
-          visualPrompt = promptResponse.data?.visualPrompt;
-          console.log('✅ Layer 2 complete: Visual prompt generated');
-        }
-      } catch (layer2Error) {
-        console.warn('Layer 2 failed, proceeding with fallback:', layer2Error);
-      }
-
-      // ========================================
-      // LAYER 3: Generate image from visual prompt
-      // ========================================
-      console.log('🟢 Layer 3: Generating image from visual prompt...');
       const imageResponse = await supabase.functions.invoke('generate-image', {
         body: {
           caption,
           imageStyle: campaignData.imageStyle,
           campaignType: campaignData.campaignType,
-          visualPrompt // Pass the AI-generated visual prompt if available
+          visualPrompt: imagePrompt // Use the AI-generated visual prompt
         }
       });
 
       if (imageResponse.error) {
-        console.error('Layer 3 failed:', imageResponse.error);
+        console.error('Image generation failed:', imageResponse.error);
         setGeneratedCampaign(prev => prev ? {
           ...prev,
           imageStatus: 'failed'
@@ -156,7 +164,7 @@ export function useCampaignGeneration() {
           imageStatus: 'completed'
         } : null);
         toast.success('Image generated!', { icon: '🎨' });
-        console.log('✅ Layer 3 complete: Image generated successfully');
+        console.log('✅ Image generated successfully');
       }
 
       return { success: true, campaignId };
@@ -181,6 +189,12 @@ export function useCampaignGeneration() {
   }, [generateCampaign]);
 
   const updateCaption = useCallback(async (newCaption: string) => {
+    // Validate @ArcFlowFinance before allowing update
+    if (!validateArcFlowMention(newCaption)) {
+      toast.error('Caption must include @ArcFlowFinance mention');
+      return false;
+    }
+    
     if (generatedCampaign) {
       const captionHash = await hashCaption(newCaption);
       setGeneratedCampaign({
@@ -188,7 +202,9 @@ export function useCampaignGeneration() {
         caption: newCaption,
         captionHash
       });
+      return true;
     }
+    return false;
   }, [generatedCampaign]);
 
   const completeCampaign = useCallback(async (
