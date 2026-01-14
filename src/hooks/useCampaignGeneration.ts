@@ -20,6 +20,17 @@ export interface GeneratedCampaign {
   imageUrl: string | null;
   imageStatus: 'pending' | 'generating' | 'completed' | 'failed';
   captionHash?: string;
+  imagePrompt?: string;
+  generationMetadata?: {
+    campaignType: string;
+    imageStyle: string;
+    targetDApps: string[];
+    attempts: number;
+    generatedAt: string;
+    hasArcFlowMention: boolean;
+    actionOrder?: string[];
+    timeWindow?: string;
+  };
 }
 
 // Simple hash function for caption deduplication
@@ -109,7 +120,7 @@ export function useCampaignGeneration() {
         throw new Error(unifiedResponse.error.message || 'Failed to generate campaign');
       }
 
-      let { caption, imagePrompt } = unifiedResponse.data;
+      let { caption, imagePrompt, metadata } = unifiedResponse.data;
       
       if (!caption) {
         throw new Error('No caption received from AI');
@@ -124,13 +135,22 @@ export function useCampaignGeneration() {
       const captionHash = await hashCaption(caption);
       const campaignId = `campaign-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
-      // Set initial state with caption
+      // Build generation metadata for auditing
+      const generationMetadata = {
+        ...metadata,
+        actionOrder: campaignData.actionOrder,
+        timeWindow: campaignData.timeWindow,
+      };
+
+      // Set initial state with caption and metadata
       setGeneratedCampaign({
         id: campaignId,
         caption,
         imageUrl: null,
         imageStatus: 'generating',
-        captionHash
+        captionHash,
+        imagePrompt,
+        generationMetadata
       });
 
       toast.success('Caption generated!', { icon: '✍️' });
@@ -237,7 +257,9 @@ export function useCampaignGeneration() {
           caption_hash: generatedCampaign.captionHash || await hashCaption(generatedCampaign.caption),
           image_url: generatedCampaign.imageUrl,
           image_status: generatedCampaign.imageStatus,
-          status: 'completed' // Mark as completed instead of draft
+          status: 'completed',
+          image_prompt: generatedCampaign.imagePrompt || null,
+          generation_metadata: generatedCampaign.generationMetadata || {}
         })
         .select()
         .single();

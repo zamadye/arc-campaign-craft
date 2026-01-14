@@ -22,7 +22,9 @@ export type Database = {
           caption_hash: string
           created_at: string
           custom_input: string | null
+          generation_metadata: Json | null
           id: string
+          image_prompt: string | null
           image_status: string
           image_style: string
           image_url: string | null
@@ -39,7 +41,9 @@ export type Database = {
           caption_hash: string
           created_at?: string
           custom_input?: string | null
+          generation_metadata?: Json | null
           id?: string
+          image_prompt?: string | null
           image_status?: string
           image_style: string
           image_url?: string | null
@@ -56,7 +60,9 @@ export type Database = {
           caption_hash?: string
           created_at?: string
           custom_input?: string | null
+          generation_metadata?: Json | null
           id?: string
+          image_prompt?: string | null
           image_status?: string
           image_style?: string
           image_url?: string | null
