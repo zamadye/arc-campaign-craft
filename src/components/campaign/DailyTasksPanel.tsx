@@ -17,12 +17,15 @@ import { Progress } from '@/components/ui/progress';
 import { 
   DailyTaskSet, 
   DailyTask, 
+  DbDApp,
   generateDailyTasks, 
   loadTaskState, 
   saveTaskState,
   getTodayDateString,
   areAllTasksCompleted,
-  getTaskContextForCaption
+  getTaskContextForCaption,
+  fetchDAppsFromDatabase,
+  setCachedDapps
 } from '@/lib/dailyTasks';
 import { useWallet } from '@/contexts/WalletContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -36,32 +39,51 @@ interface DailyTasksPanelProps {
 export function DailyTasksPanel({ onAllTasksCompleted, disabled }: DailyTasksPanelProps) {
   const { address, isConnected, userId } = useWallet();
   const [taskSet, setTaskSet] = useState<DailyTaskSet | null>(null);
+  const [dapps, setDapps] = useState<DbDApp[]>([]);
+  const [loading, setLoading] = useState(true);
   const [verifyingTaskId, setVerifyingTaskId] = useState<string | null>(null);
   const [joinedTasks, setJoinedTasks] = useState<Set<string>>(new Set());
 
-  // Initialize tasks when wallet connects
+  // Fetch dApps from database on mount
   useEffect(() => {
-    if (!address) {
+    const loadDapps = async () => {
+      setLoading(true);
+      try {
+        const fetchedDapps = await fetchDAppsFromDatabase();
+        setDapps(fetchedDapps);
+        setCachedDapps(fetchedDapps);
+      } catch (err) {
+        console.error('Failed to fetch dApps:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadDapps();
+  }, []);
+
+  // Initialize tasks when wallet connects and dApps are loaded
+  useEffect(() => {
+    if (!address || dapps.length === 0) {
       setTaskSet(null);
       return;
     }
 
     const today = getTodayDateString();
-    const savedState = loadTaskState(address, today);
+    const savedState = loadTaskState(address, today, dapps);
     
-    if (savedState) {
+    if (savedState && savedState.tasks.length > 0) {
       setTaskSet(savedState);
       if (areAllTasksCompleted(savedState)) {
         onAllTasksCompleted(getTaskContextForCaption(savedState));
       }
     } else {
-      const newTasks = generateDailyTasks(address, today);
+      const newTasks = generateDailyTasks(address, today, 3, dapps);
       setTaskSet(newTasks);
       saveTaskState(newTasks);
     }
-  }, [address, onAllTasksCompleted]);
+  }, [address, dapps, onAllTasksCompleted]);
 
-  // Join task (record timestamp)
+  // Join task (record timestamp and open dApp)
   const handleJoinTask = async (task: DailyTask) => {
     if (!address || !userId || !taskSet) return;
 
@@ -70,7 +92,7 @@ export function DailyTasksPanel({ onAllTasksCompleted, disabled }: DailyTasksPan
       const { error } = await supabase.from('campaign_participations').insert({
         user_id: userId,
         wallet_address: address,
-        template_id: task.dapp.id, // Use dApp ID as template reference
+        template_id: task.dapp.id,
         verification_status: 'pending',
       });
 
@@ -81,8 +103,8 @@ export function DailyTasksPanel({ onAllTasksCompleted, disabled }: DailyTasksPan
       setJoinedTasks(prev => new Set([...prev, task.id]));
       
       // Open dApp in new tab
-      if (task.dapp.links.app) {
-        window.open(task.dapp.links.app, '_blank');
+      if (task.dapp.website_url) {
+        window.open(task.dapp.website_url, '_blank');
       }
     } catch (err) {
       console.error('Error joining task:', err);
@@ -101,8 +123,10 @@ export function DailyTasksPanel({ onAllTasksCompleted, disabled }: DailyTasksPan
         body: {
           walletAddress: address,
           dappId: task.dapp.id,
+          dappSlug: task.dapp.slug,
           actionVerb: task.actionVerb,
           minAmount: task.minAmount,
+          targetContract: task.dapp.target_contract,
         },
       });
 
@@ -145,6 +169,18 @@ export function DailyTasksPanel({ onAllTasksCompleted, disabled }: DailyTasksPan
     }
   };
 
+  // Loading state
+  if (loading) {
+    return (
+      <Card className="border-dashed border-muted-foreground/30">
+        <CardContent className="py-12 text-center">
+          <Loader2 className="w-8 h-8 mx-auto text-primary animate-spin mb-4" />
+          <p className="text-muted-foreground">Loading your daily tasks...</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
   if (!isConnected || !taskSet) {
     return (
       <Card className="border-dashed border-muted-foreground/30">
@@ -152,6 +188,19 @@ export function DailyTasksPanel({ onAllTasksCompleted, disabled }: DailyTasksPan
           <Shield className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
           <p className="text-muted-foreground">
             Connect your wallet to see your daily tasks
+          </p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (taskSet.tasks.length === 0) {
+    return (
+      <Card className="border-dashed border-muted-foreground/30">
+        <CardContent className="py-12 text-center">
+          <Sparkles className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
+          <p className="text-muted-foreground">
+            No tasks available right now. Please try again later.
           </p>
         </CardContent>
       </Card>
@@ -212,15 +261,20 @@ export function DailyTasksPanel({ onAllTasksCompleted, disabled }: DailyTasksPan
                   <div className="flex items-center gap-2 mb-1">
                     <span className="font-medium truncate">{task.dapp.name}</span>
                     <Badge variant="secondary" className="text-xs shrink-0">
-                      {task.dapp.type}
+                      {task.dapp.category}
                     </Badge>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-2">
+                  <p className="text-sm text-muted-foreground mb-1">
                     {task.action}
-                    {task.minAmount && (
-                      <span className="text-xs ml-1">(min ${task.minAmount})</span>
-                    )}
                   </p>
+                  <p className="text-xs text-muted-foreground/70 line-clamp-2">
+                    {task.dapp.description}
+                  </p>
+                  {task.minAmount && (
+                    <p className="text-xs text-primary/80 mt-1">
+                      Min. amount: ${task.minAmount}
+                    </p>
+                  )}
 
                   {/* Action Buttons */}
                   {task.verificationStatus !== 'verified' && (

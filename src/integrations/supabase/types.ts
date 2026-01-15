@@ -14,6 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
+      arc_dapps: {
+        Row: {
+          actions: Json
+          category: string
+          chain_id: number | null
+          created_at: string
+          description: string
+          icon_url: string | null
+          id: string
+          is_active: boolean
+          is_featured: boolean
+          is_verified: boolean
+          name: string
+          slug: string
+          target_contract: string | null
+          updated_at: string
+          website_url: string
+        }
+        Insert: {
+          actions?: Json
+          category: string
+          chain_id?: number | null
+          created_at?: string
+          description: string
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean
+          is_featured?: boolean
+          is_verified?: boolean
+          name: string
+          slug: string
+          target_contract?: string | null
+          updated_at?: string
+          website_url: string
+        }
+        Update: {
+          actions?: Json
+          category?: string
+          chain_id?: number | null
+          created_at?: string
+          description?: string
+          icon_url?: string | null
+          id?: string
+          is_active?: boolean
+          is_featured?: boolean
+          is_verified?: boolean
+          name?: string
+          slug?: string
+          target_contract?: string | null
+          updated_at?: string
+          website_url?: string
+        }
+        Relationships: []
+      }
       campaign_participations: {
         Row: {
           campaign_id: string | null
