@@ -683,19 +683,30 @@ serve(async (req) => {
           }
           return safeError(500, 'Failed to save campaign', insertError);
         }
-        
-        // Transition to finalized state (proof ready)
-        const { data: campaign, error: updateError } = await supabase
+        // Transition campaign state (DB-enforced state machine): draft -> generated -> finalized
+        const { data: generatedCampaign, error: generatedError } = await supabase
+          .from('campaigns')
+          .update({ status: 'generated' })
+          .eq('id', draftCampaign.id)
+          .select()
+          .single();
+
+        if (generatedError || !generatedCampaign) {
+          return safeError(500, 'Failed to update campaign status', generatedError);
+        }
+
+        const { data: finalizedCampaign, error: finalizedError } = await supabase
           .from('campaigns')
           .update({ status: 'finalized' })
           .eq('id', draftCampaign.id)
           .select()
           .single();
 
-        if (updateError) {
-          console.error('[CampaignService] Status update error (non-fatal):', updateError);
-          // Continue with draft campaign if update fails
+        if (finalizedError || !finalizedCampaign) {
+          return safeError(500, 'Failed to finalize campaign', finalizedError);
         }
+
+        const campaign = finalizedCampaign;
 
         console.log('[CampaignService] Campaign saved successfully');
 
@@ -708,7 +719,9 @@ serve(async (req) => {
           timeWindow: generationMetadata?.timeWindow || 'none'
         });
 
-        const { data: proof, error: proofError } = await supabase
+        let proof: unknown = null;
+
+        const { data: insertedProof, error: proofError } = await supabase
           .from('nfts')
           .insert({
             campaign_id: campaign.id,
@@ -720,22 +733,32 @@ serve(async (req) => {
             minted_at: new Date().toISOString(),
             verified_at: new Date().toISOString(),
             // Generate a pseudo tx hash for display purposes
-            tx_hash: `0x${Array.from({length: 64}, () => Math.floor(Math.random() * 16).toString(16)).join('')}`
+            tx_hash: `0x${Array.from({ length: 64 }, () => Math.floor(Math.random() * 16).toString(16)).join('')}`
           })
           .select()
           .single();
 
         if (proofError) {
           console.error('[CampaignService] Proof creation error (non-fatal):', proofError);
-          // Continue anyway - campaign is saved
+
+          // If the proof already exists (or insert failed), try to return an existing one
+          const { data: existingProof } = await supabase
+            .from('nfts')
+            .select('*')
+            .eq('campaign_id', campaign.id)
+            .eq('user_id', userId)
+            .maybeSingle();
+
+          proof = existingProof || null;
         } else {
           console.log('[CampaignService] Proof created successfully');
+          proof = insertedProof;
         }
 
-        return new Response(JSON.stringify({ 
-          success: true, 
+        return new Response(JSON.stringify({
+          success: true,
           campaign,
-          proof: proof || null
+          proof
         }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
