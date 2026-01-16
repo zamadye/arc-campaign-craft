@@ -5,7 +5,6 @@ import { Navbar } from '@/components/Navbar';
 import { Footer } from '@/components/Footer';
 import { DailyTasksPanel } from '@/components/campaign/DailyTasksPanel';
 import { CampaignPreview } from '@/components/campaign/CampaignPreview';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent } from '@/components/ui/card';
@@ -31,7 +30,7 @@ export interface CampaignData {
 export type { GeneratedCampaign } from '@/hooks/useCampaignGeneration';
 
 // Flow Steps
-type FlowStep = 'tasks' | 'generate' | 'mint' | 'share';
+type FlowStep = 'tasks' | 'generate' | 'preview' | 'share';
 
 const CreateCampaign: React.FC = () => {
   const { isConnected, address, connect, isConnecting, isCorrectNetwork, switchNetwork } = useWallet();
@@ -50,7 +49,7 @@ const CreateCampaign: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<FlowStep>('tasks');
   const [taskContext, setTaskContext] = useState<ReturnType<typeof getTaskContextForCaption> | null>(null);
   const [completedCampaignId, setCompletedCampaignId] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState('tasks');
+  const [showPreviewInline, setShowPreviewInline] = useState(false);
 
   // Build campaign data from task context
   const buildCampaignData = useCallback((): CampaignData & { dappUrls?: string[] } => {
@@ -89,7 +88,7 @@ const CreateCampaign: React.FC = () => {
     setCurrentStep('generate');
   }, []);
 
-  // Handle generate
+  // Handle generate - shows preview inline
   const handleGenerate = async () => {
     if (!isConnected) {
       await connect();
@@ -101,8 +100,9 @@ const CreateCampaign: React.FC = () => {
     }
     
     const campaignData = buildCampaignData();
+    setShowPreviewInline(true);
+    setCurrentStep('preview');
     await generateCampaign(campaignData, address);
-    setActiveTab('preview');
   };
 
   // Handle regenerate
@@ -132,11 +132,17 @@ const CreateCampaign: React.FC = () => {
     }
   };
 
+  // Back to tasks
+  const handleBackToTasks = () => {
+    setShowPreviewInline(false);
+    setCurrentStep('tasks');
+  };
+
   // Step indicator
   const steps = [
     { id: 'tasks', label: 'Complete Tasks', icon: CheckCircle2 },
-    { id: 'generate', label: 'Generate Caption', icon: Sparkles },
-    { id: 'mint', label: 'Mint Proof', icon: Trophy },
+    { id: 'generate', label: 'Generate', icon: Sparkles },
+    { id: 'preview', label: 'Mint Proof', icon: Trophy },
     { id: 'share', label: 'Share', icon: Share2 },
   ];
 
@@ -266,143 +272,97 @@ const CreateCampaign: React.FC = () => {
             </motion.div>
           )}
 
-          {/* Desktop Layout */}
-          <div className="hidden lg:grid lg:grid-cols-5 gap-8">
-            {/* Left Panel - Tasks */}
-            <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="lg:col-span-3"
-            >
-              <DailyTasksPanel
-                onAllTasksCompleted={handleAllTasksCompleted}
-                disabled={!isConnected || !isCorrectNetwork}
-              />
+          {/* Main Content - Single Column with Inline Transform */}
+          <div className="max-w-2xl mx-auto">
+            <AnimatePresence mode="wait">
+              {/* Tasks Panel - Show when not in preview mode */}
+              {!showPreviewInline && (
+                <motion.div
+                  key="tasks-panel"
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                >
+                  <DailyTasksPanel
+                    onAllTasksCompleted={handleAllTasksCompleted}
+                    disabled={!isConnected || !isCorrectNetwork}
+                  />
 
-              {/* Generate Button - Shows after tasks completed */}
-              <AnimatePresence>
-                {currentStep === 'generate' && !generatedCampaign && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    className="mt-6"
-                  >
-                    <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10">
-                      <CardContent className="py-6">
-                        <div className="text-center">
-                          <Sparkles className="w-10 h-10 mx-auto text-primary mb-3" />
-                          <h3 className="font-semibold text-lg mb-2">Ready to Generate!</h3>
-                          <p className="text-sm text-muted-foreground mb-4">
-                            Your completed tasks: {taskContext?.dapps.join(', ')}
-                          </p>
-                          <Button
-                            variant="gradient"
-                            size="lg"
-                            onClick={handleGenerate}
-                            disabled={isGenerating}
-                            className="gap-2"
-                          >
-                            {isGenerating ? (
-                              <>Generating...</>
-                            ) : (
-                              <>
-                                <Sparkles className="w-4 h-4" />
-                                Generate Caption
-                              </>
-                            )}
-                          </Button>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </motion.div>
-            
-            {/* Right Panel - Preview */}
-            <motion.div
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="lg:col-span-2"
-            >
-              <div className="sticky top-28">
-                <CampaignPreview
-                  campaign={generatedCampaign}
-                  isGenerating={isGenerating}
-                  onRegenerate={handleRegenerate}
-                  onUpdateCaption={updateCaption}
-                  campaignData={buildCampaignData()}
-                  onComplete={handleMint}
-                  isCompleting={isCompleting}
-                  completedCampaignId={completedCampaignId}
-                />
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Mobile/Tablet Layout */}
-          <div className="lg:hidden">
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList className="grid w-full grid-cols-2 mb-6">
-                <TabsTrigger value="tasks">Tasks</TabsTrigger>
-                <TabsTrigger value="preview">
-                  Preview
-                  {generatedCampaign && (
-                    <span className="ml-2 w-2 h-2 rounded-full bg-primary" />
-                  )}
-                </TabsTrigger>
-              </TabsList>
-              
-              <TabsContent value="tasks">
-                <DailyTasksPanel
-                  onAllTasksCompleted={handleAllTasksCompleted}
-                  disabled={!isConnected || !isCorrectNetwork}
-                />
-
-                {/* Generate Button - Mobile */}
-                <AnimatePresence>
-                  {currentStep === 'generate' && !generatedCampaign && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -20 }}
-                      className="mt-6"
-                    >
-                      <Button
-                        variant="gradient"
-                        size="lg"
-                        onClick={handleGenerate}
-                        disabled={isGenerating}
-                        className="w-full gap-2"
+                  {/* Generate Button - Shows after tasks completed */}
+                  <AnimatePresence>
+                    {currentStep === 'generate' && !generatedCampaign && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -20 }}
+                        className="mt-6"
                       >
-                        {isGenerating ? (
-                          <>Generating...</>
-                        ) : (
-                          <>
-                            <Sparkles className="w-4 h-4" />
-                            Generate Caption
-                          </>
-                        )}
-                      </Button>
-                    </motion.div>
+                        <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10">
+                          <CardContent className="py-6">
+                            <div className="text-center">
+                              <Sparkles className="w-10 h-10 mx-auto text-primary mb-3" />
+                              <h3 className="font-semibold text-lg mb-2">Ready to Generate!</h3>
+                              <p className="text-sm text-muted-foreground mb-4">
+                                Your completed tasks: {taskContext?.dapps.join(', ')}
+                              </p>
+                              <Button
+                                variant="gradient"
+                                size="lg"
+                                onClick={handleGenerate}
+                                disabled={isGenerating}
+                                className="gap-2"
+                              >
+                                {isGenerating ? (
+                                  <>Generating...</>
+                                ) : (
+                                  <>
+                                    <Sparkles className="w-4 h-4" />
+                                    Generate Caption
+                                  </>
+                                )}
+                              </Button>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </motion.div>
+              )}
+
+              {/* Preview Panel - Show inline when in preview mode */}
+              {showPreviewInline && (
+                <motion.div
+                  key="preview-panel"
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                >
+                  {/* Back Button */}
+                  {!completedCampaignId && !isGenerating && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={handleBackToTasks}
+                      className="mb-4"
+                    >
+                      ← Back to Tasks
+                    </Button>
                   )}
-                </AnimatePresence>
-              </TabsContent>
-              
-              <TabsContent value="preview">
-                <CampaignPreview
-                  campaign={generatedCampaign}
-                  isGenerating={isGenerating}
-                  onRegenerate={handleRegenerate}
-                  onUpdateCaption={updateCaption}
-                  campaignData={buildCampaignData()}
-                  onComplete={handleMint}
-                  isCompleting={isCompleting}
-                  completedCampaignId={completedCampaignId}
-                />
-              </TabsContent>
-            </Tabs>
+
+                  <CampaignPreview
+                    campaign={generatedCampaign}
+                    isGenerating={isGenerating}
+                    onRegenerate={handleRegenerate}
+                    onUpdateCaption={updateCaption}
+                    campaignData={buildCampaignData()}
+                    onComplete={handleMint}
+                    isCompleting={isCompleting}
+                    completedCampaignId={completedCampaignId}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </main>
