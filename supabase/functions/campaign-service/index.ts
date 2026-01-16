@@ -666,8 +666,8 @@ serve(async (req) => {
           });
         }
 
-        // Insert the campaign with validated data
-        const { data: campaign, error: insertError } = await supabase
+        // Insert the campaign with validated data (must start as draft due to DB constraint)
+        const { data: draftCampaign, error: insertError } = await supabase
           .from('campaigns')
           .insert({
             user_id: userId,
@@ -681,13 +681,13 @@ serve(async (req) => {
             caption_hash: captionHash,
             image_url: imageUrl || null,
             image_status: imageStatus || 'pending',
-            status: 'minted', // Mark as minted (proof ready)
+            status: 'draft', // Must start as draft due to DB constraint
             image_prompt: imagePrompt || null,
             generation_metadata: generationMetadata || {}
           })
           .select()
           .single();
-
+          
         if (insertError) {
           // Check for duplicate caption
           if (insertError.code === '23505') {
@@ -700,6 +700,19 @@ serve(async (req) => {
           }
           console.error('[CampaignService] Save insert error:', insertError);
           throw insertError;
+        }
+        
+        // Transition to finalized state (proof ready)
+        const { data: campaign, error: updateError } = await supabase
+          .from('campaigns')
+          .update({ status: 'finalized' })
+          .eq('id', draftCampaign.id)
+          .select()
+          .single();
+
+        if (updateError) {
+          console.error('[CampaignService] Status update error:', updateError);
+          // Continue with draft campaign if update fails
         }
 
         console.log(`[CampaignService] Saved campaign: ${campaign.id} for user: ${userId}`);
