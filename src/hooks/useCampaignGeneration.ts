@@ -12,6 +12,7 @@ interface CampaignData {
   targetDApps?: string[];
   actionOrder?: string[];
   timeWindow?: string;
+  dappUrls?: string[];
 }
 
 export interface GeneratedCampaign {
@@ -31,6 +32,11 @@ export interface GeneratedCampaign {
     actionOrder?: string[];
     timeWindow?: string;
   };
+  proof?: {
+    id: string;
+    txHash?: string;
+    intentFingerprint?: string;
+  } | null;
 }
 
 // Simple hash function for caption deduplication
@@ -112,6 +118,7 @@ export function useCampaignGeneration() {
           intentCategory: campaignData.intentCategory,
           actionOrder: campaignData.actionOrder,
           timeWindow: campaignData.timeWindow,
+          dappUrls: campaignData.dappUrls,
           walletAddress,
         }
       });
@@ -278,17 +285,32 @@ export function useCampaignGeneration() {
       }
 
       const data = response.data?.campaign;
+      const proofData = response.data?.proof;
+      
       if (!data) {
         throw new Error('No campaign data returned from server');
       }
 
+      // Update the generated campaign with proof data
+      if (proofData) {
+        setGeneratedCampaign(prev => prev ? {
+          ...prev,
+          id: data.id,
+          proof: {
+            id: proofData.id,
+            txHash: proofData.tx_hash,
+            intentFingerprint: proofData.intent_fingerprint
+          }
+        } : null);
+      }
+
       // Quiet confirmation - no celebration
-      toast('Campaign completed. Proof generating...', { 
+      toast('Proof generated! You can now share.', { 
         icon: '🔒',
         duration: 3000 
       });
       
-      console.log('✅ Campaign completed with fingerprint:', fingerprint);
+      console.log('✅ Campaign completed with proof:', proofData?.id);
       return data;
 
     } catch (err) {

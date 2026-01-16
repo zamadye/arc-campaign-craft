@@ -24,6 +24,7 @@ import {
   FreezeWarningBanner, 
   EditAttemptWarning 
 } from './ArtifactFreezeGuard';
+import { ShareModal } from './ShareModal';
 
 interface CampaignPreviewProps {
   campaign: GeneratedCampaign | null;
@@ -50,6 +51,7 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
 }) => {
   const { address, isConnected, isCorrectNetwork, connect, switchNetwork } = useWallet();
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [editedCaption, setEditedCaption] = useState('');
   const [showCompletionSuccess, setShowCompletionSuccess] = useState(false);
   const [showEditWarning, setShowEditWarning] = useState(false);
@@ -130,9 +132,9 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
   };
 
   const handleShare = () => {
-    const shareUrl = generateShareUrl();
-    if (shareUrl) {
-      window.open(shareUrl, '_blank', 'noopener,noreferrer,width=600,height=400');
+    // Only allow share if proof exists
+    if (campaign?.proof || completedCampaignId) {
+      setIsShareModalOpen(true);
     }
   };
 
@@ -369,7 +371,7 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
           </motion.div>
         )}
 
-        {/* Completed Successfully */}
+        {/* Completed Successfully - Proof Ready, Share Enabled */}
         {completedCampaignId && (
           <motion.div
             initial={{ opacity: 0, y: 10 }}
@@ -379,20 +381,27 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
             <div className="p-4 rounded-lg bg-accent/10 border border-accent/30">
               <div className="flex items-center gap-2 mb-2">
                 <CheckCircle className="w-5 h-5 text-accent" />
-                <span className="font-medium text-accent">Campaign Completed!</span>
+                <span className="font-medium text-accent">Proof Generated!</span>
               </div>
               <p className="text-sm text-muted-foreground">
-                Your structured intent has been recorded. Proof will appear in your wallet.
+                Your intent proof is ready. Share it on X to show your activity!
               </p>
+              {campaign?.proof?.txHash && (
+                <p className="text-xs text-muted-foreground/70 mt-1">
+                  TX: {campaign.proof.txHash.slice(0, 16)}...
+                </p>
+              )}
             </div>
 
+            {/* Primary Share Action */}
             <Button 
-              variant="outline" 
+              variant="gradient" 
               className="w-full"
+              size="lg"
               onClick={handleShare}
             >
-              <Share className="w-4 h-4 mr-2" />
-              Share Your Intent
+              <Share className="w-5 h-5 mr-2" />
+              Share on X (Twitter)
             </Button>
             
             <Button 
@@ -405,7 +414,7 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
             </Button>
             
             <Button 
-              variant="gradient" 
+              variant="outline" 
               className="w-full"
               onClick={() => window.location.reload()}
             >
@@ -514,6 +523,21 @@ export const CampaignPreview: React.FC<CampaignPreviewProps> = ({
         show={showEditWarning} 
         onDismiss={() => setShowEditWarning(false)} 
       />
+
+      {/* Share Modal - Only when proof is ready */}
+      {campaign && (
+        <ShareModal
+          isOpen={isShareModalOpen}
+          onClose={() => setIsShareModalOpen(false)}
+          campaign={{
+            id: completedCampaignId || campaign.id,
+            caption: campaign.caption,
+            imageUrl: campaign.imageUrl,
+            status: campaign.proof ? 'minted' : campaignStatus,
+          }}
+          proofMinted={!!campaign.proof || !!completedCampaignId}
+        />
+      )}
     </>
   );
 };

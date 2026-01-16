@@ -53,7 +53,7 @@ const CreateCampaign: React.FC = () => {
   const [activeTab, setActiveTab] = useState('tasks');
 
   // Build campaign data from task context
-  const buildCampaignData = useCallback((): CampaignData => {
+  const buildCampaignData = useCallback((): CampaignData & { dappUrls?: string[] } => {
     if (!taskContext) {
       return {
         campaignType: 'defi-promotion',
@@ -65,6 +65,7 @@ const CreateCampaign: React.FC = () => {
         targetDApps: [],
         actionOrder: [],
         timeWindow: 'day' as TimeWindow,
+        dappUrls: [],
       };
     }
 
@@ -78,6 +79,7 @@ const CreateCampaign: React.FC = () => {
       targetDApps: taskContext.dapps,
       actionOrder: taskContext.actions,
       timeWindow: 'day' as TimeWindow,
+      dappUrls: taskContext.dappUrls || [],
     };
   }, [taskContext]);
 

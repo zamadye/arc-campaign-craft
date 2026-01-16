@@ -241,6 +241,7 @@ serve(async (req) => {
       intentCategory,
       actionOrder,
       timeWindow,
+      dappUrls,
     } = await req.json();
 
     if (!campaignType || !imageStyle) {
@@ -269,8 +270,21 @@ serve(async (req) => {
     const styleGuide = IMAGE_STYLE_GUIDES[imageStyle] || IMAGE_STYLE_GUIDES["vibrant"];
     const campaignContext = CAMPAIGN_CONTEXT[campaignType] || "engaging blockchain content";
 
-    const selectedDApps = resolveDApps(targetDApps);
-    const dAppsContext = selectedDApps.map((d) => d.name).join(', ');
+    // PRIORITY: Use dappUrls passed from frontend (from verified daily tasks)
+    // Fallback to registry-based resolution only if no URLs provided
+    const passedDappUrls = Array.isArray(dappUrls) && dappUrls.length > 0 
+      ? dappUrls.filter((url: string) => typeof url === 'string' && url.startsWith('http'))
+      : [];
+    
+    const selectedDApps = passedDappUrls.length >= 2 
+      ? passedDappUrls.map((url: string, i: number) => ({ 
+          id: `dapp-${i}`, 
+          name: targetDApps?.[i] || `dApp ${i + 1}`, 
+          url 
+        }))
+      : resolveDApps(targetDApps);
+    
+    const dAppsContext = Array.isArray(targetDApps) ? targetDApps.join(', ') : selectedDApps.map((d) => d.name).join(', ');
     const allowedLinks = selectedDApps.map((d) => d.url);
     const linksContext = allowedLinks.slice(0, 3).map((u) => `- ${u}`).join('\n');
 
