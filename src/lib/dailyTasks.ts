@@ -259,6 +259,7 @@ export function areAllTasksCompleted(taskSet: DailyTaskSet): boolean {
 // Get task context for caption generation
 export function getTaskContextForCaption(taskSet: DailyTaskSet): {
   dapps: string[];
+  dappUrls: string[];
   actions: string[];
   categories: string[];
 } {
@@ -266,6 +267,7 @@ export function getTaskContextForCaption(taskSet: DailyTaskSet): {
   
   return {
     dapps: verifiedTasks.map(t => t.dapp.name),
+    dappUrls: verifiedTasks.map(t => t.dapp.website_url).filter(Boolean),
     actions: verifiedTasks.map(t => t.actionVerb),
     categories: [...new Set(verifiedTasks.map(t => t.dapp.category))],
   };
