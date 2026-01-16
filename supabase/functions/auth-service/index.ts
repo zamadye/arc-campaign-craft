@@ -8,6 +8,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Generic error helper - logs details server-side, returns safe message to client
+function safeError(status: number, publicMsg: string, internalDetails?: unknown): Response {
+  if (internalDetails) console.error('[AuthService] Internal:', internalDetails);
+  return new Response(JSON.stringify({ error: publicMsg }), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
+
 interface SiwePayload {
   message: string;
   signature: string;
@@ -101,11 +110,7 @@ serve(async (req) => {
         // Verify SIWE signature
         const siweResult = await verifySiweSignature({ message, signature, address });
         if (!siweResult.valid) {
-          console.warn(`[AuthService] SIWE verification failed: ${siweResult.error}`);
-          return new Response(JSON.stringify({ error: `Authentication failed: ${siweResult.error}` }), {
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          return safeError(401, 'Authentication failed', `SIWE verification failed: ${siweResult.error}`);
         }
 
         const walletAddress = siweResult.address!;
@@ -171,7 +176,6 @@ serve(async (req) => {
           });
 
           if (signInError) {
-            console.error(`[AuthService] Sign-in error:`, signInError);
             // If password changed or something wrong, try to update it
             const { error: updateError } = await supabase.auth.admin.updateUserById(
               existingUser.id,
@@ -179,11 +183,7 @@ serve(async (req) => {
             );
             
             if (updateError) {
-              console.error(`[AuthService] Failed to update password:`, updateError);
-              return new Response(JSON.stringify({ error: 'Authentication failed' }), {
-                status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
+              return safeError(401, 'Authentication failed', updateError);
             }
 
             // Try sign in again
@@ -193,11 +193,7 @@ serve(async (req) => {
             });
 
             if (retryError) {
-              console.error(`[AuthService] Retry sign-in failed:`, retryError);
-              return new Response(JSON.stringify({ error: 'Authentication failed' }), {
-                status: 401,
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-              });
+              return safeError(401, 'Authentication failed', retryError);
             }
 
             session = retryData.session;
@@ -225,11 +221,7 @@ serve(async (req) => {
           });
 
           if (signUpError) {
-            console.error(`[AuthService] Sign-up error:`, signUpError);
-            return new Response(JSON.stringify({ error: 'Failed to create account' }), {
-              status: 500,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
+            return safeError(500, 'Failed to create account', signUpError);
           }
 
           userId = signUpData.user.id;
@@ -241,11 +233,7 @@ serve(async (req) => {
           });
 
           if (signInError) {
-            console.error(`[AuthService] Post-signup sign-in error:`, signInError);
-            return new Response(JSON.stringify({ error: 'Failed to authenticate' }), {
-              status: 500,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
+            return safeError(500, 'Authentication failed', signInError);
           }
 
           session = signInData.session;
@@ -263,10 +251,10 @@ serve(async (req) => {
             });
 
           if (profileError) {
-            console.error(`[AuthService] Profile creation error:`, profileError);
+            console.error('[AuthService] Profile creation error (non-fatal):', profileError);
             // Non-fatal - user can still use the app
           } else {
-            console.log(`[AuthService] Profile created for user: ${userId}`);
+            console.log('[AuthService] Profile created successfully');
           }
         }
 
@@ -312,8 +300,7 @@ serve(async (req) => {
           .maybeSingle();
 
         if (error) {
-          console.error(`[AuthService] Profile fetch error:`, error);
-          throw error;
+          return safeError(500, 'Internal error', error);
         }
 
         return new Response(JSON.stringify({ profile }), {
@@ -347,10 +334,7 @@ serve(async (req) => {
         });
 
         if (!siweResult.valid) {
-          return new Response(JSON.stringify({ error: `Authentication failed: ${siweResult.error}` }), {
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          return safeError(401, 'Authentication failed', `SIWE verification failed: ${siweResult.error}`);
         }
 
         const { data: profile, error } = await supabase
@@ -361,8 +345,7 @@ serve(async (req) => {
           .single();
 
         if (error) {
-          console.error(`[AuthService] Profile update error:`, error);
-          throw error;
+          return safeError(500, 'Internal error', error);
         }
 
         return new Response(JSON.stringify({ success: true, profile }), {
@@ -381,11 +364,6 @@ serve(async (req) => {
       }
     }
   } catch (error: unknown) {
-    console.error('[AuthService] Error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return safeError(500, 'Internal error', error);
   }
 });

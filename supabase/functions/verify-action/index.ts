@@ -6,6 +6,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Generic error helper - logs details server-side, returns safe message to client
+function safeError(status: number, publicMsg: string, internalDetails?: unknown): Response {
+  if (internalDetails) console.error('[verify-action] Internal:', internalDetails);
+  return new Response(JSON.stringify({ success: false, error: publicMsg }), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
+
 const ARC_RPC_URL = "https://rpc.testnet.arc.network";
 
 // Input validation limits
@@ -71,24 +80,19 @@ serve(async (req: Request) => {
     // SECURITY: Require JWT authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader?.startsWith('Bearer ')) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Authentication required' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return safeError(401, 'Authentication required');
     }
 
     const token = authHeader.replace('Bearer ', '');
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
 
     if (authError || !user) {
-      console.warn('[verify-action] Invalid JWT:', authError?.message);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Invalid authentication' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return safeError(401, 'Invalid authentication', authError);
     }
 
-    console.log(`[verify-action] Authenticated user: ${user.id}`);
+    console.log('[verify-action] Authenticated user successfully');
+
+    console.log('[verify-action] Processing verification request');
 
     const body = await req.json() as VerifyRequest;
     const { walletAddress, dappId, actionVerb } = body;
@@ -96,27 +100,19 @@ serve(async (req: Request) => {
     // Input validation
     const walletValidation = validateWalletAddress(walletAddress || '');
     if (!walletValidation.valid) {
-      return new Response(
-        JSON.stringify({ success: false, error: walletValidation.error }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return safeError(400, 'Invalid wallet address');
     }
 
     const actionValidation = validateActionVerb(actionVerb || '');
     if (!actionValidation.valid) {
-      return new Response(
-        JSON.stringify({ success: false, error: actionValidation.error }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return safeError(400, 'Invalid action');
     }
 
     const dappIdValidation = validateOptionalDappId(dappId);
     if (!dappIdValidation.valid) {
-      return new Response(
-        JSON.stringify({ success: false, error: dappIdValidation.error }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return safeError(400, 'Invalid dApp identifier');
     }
+
 
     // SECURITY: Verify wallet ownership
     const { data: profile, error: profileError } = await supabase
@@ -126,96 +122,77 @@ serve(async (req: Request) => {
       .maybeSingle();
 
     if (profileError || !profile) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Profile not found. Please authenticate first.' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return safeError(403, 'Profile not found', profileError);
     }
 
     if (profile.wallet_address.toLowerCase() !== walletAddress!.toLowerCase()) {
-      console.warn(`[verify-action] Wallet mismatch: ${walletAddress} != ${profile.wallet_address}`);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Unauthorized: You can only verify your own wallet' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      return safeError(403, 'Unauthorized');
     }
 
-    console.log(`[verify-action] Verifying ${actionVerb} for ${walletAddress}`);
+    console.log('[verify-action] Starting blockchain verification');
 
     // SIMPLE VERIFICATION: Check if wallet has ANY recent transactions
     // This approach works with any dApp without needing specific event signatures
     try {
       // Get transaction count for the wallet
-      const txCountResponse = await fetch(ARC_RPC_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          method: 'eth_getTransactionCount',
-          params: [walletAddress, 'latest'],
-          id: 1,
-        }),
-      });
+        const txCountResponse = await fetch(ARC_RPC_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            jsonrpc: '2.0',
+            method: 'eth_getTransactionCount',
+            params: [walletAddress, 'latest'],
+            id: 1,
+          }),
+        });
 
-      const txCountData = await txCountResponse.json();
-      console.log(`[verify-action] TX count response:`, JSON.stringify(txCountData));
+        const txCountData = await txCountResponse.json();
+        console.log('[verify-action] RPC response received');
 
-      if (txCountData.error) {
-        console.error('[verify-action] RPC error:', txCountData.error);
-        return new Response(
-          JSON.stringify({ success: false, error: 'RPC error: ' + txCountData.error.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+        if (txCountData.error) {
+          return safeError(500, 'Blockchain verification failed', txCountData.error);
+        }
 
-      const txCount = parseInt(txCountData.result, 16);
-      console.log(`[verify-action] Wallet ${walletAddress} has ${txCount} transactions`);
+        const txCount = parseInt(txCountData.result, 16);
+        console.log('[verify-action] Transaction check complete');
 
       // If wallet has at least 1 transaction, consider it verified
       // This is a simple check - user has interacted with the chain
       if (txCount > 0) {
         // Generate a pseudo tx hash based on wallet and action for tracking
-        const pseudoTxHash = `0x${Array.from(walletAddress!.slice(2) + actionVerb + Date.now())
-          .map(c => c.charCodeAt(0).toString(16).padStart(2, '0'))
-          .join('')
-          .slice(0, 64)}`;
+          const pseudoTxHash = `0x${Array.from(walletAddress!.slice(2) + actionVerb + Date.now())
+            .map(c => c.charCodeAt(0).toString(16).padStart(2, '0'))
+            .join('')
+            .slice(0, 64)}`;
 
-        console.log(`[verify-action] Verified! Wallet has ${txCount} transactions`);
-        
+          console.log('[verify-action] Verification successful');
+          
+          return new Response(
+            JSON.stringify({ 
+              success: true, 
+              verified: true, 
+              txHash: pseudoTxHash,
+              message: 'Wallet activity verified' 
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+      // No transactions found
         return new Response(
           JSON.stringify({ 
             success: true, 
-            verified: true, 
-            txHash: pseudoTxHash,
-            message: `Wallet activity verified (${txCount} transactions found)` 
+            verified: false, 
+            message: 'No transactions found. Please complete the required action first.' 
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
+
+      } catch (rpcError) {
+        return safeError(500, 'Blockchain verification failed', rpcError);
       }
 
-      // No transactions found
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          verified: false, 
-          message: `No transactions found for this wallet. Please complete the action on ${actionVerb} first.` 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-
-    } catch (rpcError) {
-      console.error('[verify-action] RPC call failed:', rpcError);
-      return new Response(
-        JSON.stringify({ success: false, error: 'Failed to connect to blockchain RPC' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
   } catch (error) {
-    console.error('[verify-action] Error:', error);
-    return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : 'Unknown error' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    return safeError(500, 'Internal error', error);
   }
 });
