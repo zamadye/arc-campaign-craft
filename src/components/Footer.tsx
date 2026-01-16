@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Twitter, FileText, ExternalLink, Info } from 'lucide-react';
+import intentLogo from '@/assets/intent-logo.jpg';
 
 export const Footer: React.FC = () => {
   return (
@@ -10,9 +11,7 @@ export const Footer: React.FC = () => {
           {/* Brand */}
           <div className="md:col-span-2">
             <Link to="/" className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 rounded-lg bg-cyber-gradient flex items-center justify-center">
-                <span className="font-display font-bold text-primary-foreground text-sm">I</span>
-              </div>
+              <img src={intentLogo} alt="INTENT" className="w-8 h-8 rounded-lg object-cover" />
               <span className="font-display font-bold text-lg">INTENT</span>
             </Link>
             <p className="text-muted-foreground text-sm max-w-md mb-4">
