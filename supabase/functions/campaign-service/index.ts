@@ -8,6 +8,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Generic error helper - logs details server-side, returns safe message to client
+function safeError(status: number, publicMsg: string, internalDetails?: unknown): Response {
+  if (internalDetails) console.error('[CampaignService] Internal:', internalDetails);
+  return new Response(JSON.stringify({ error: publicMsg }), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
+
 // Campaign State Machine
 enum CampaignState {
   DRAFT = 'draft',
@@ -229,15 +238,11 @@ serve(async (req) => {
         const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getUser(token);
         
         if (claimsError || !claimsData?.user) {
-          console.warn('[CampaignService] Invalid JWT:', claimsError?.message);
-          return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          return safeError(401, 'Invalid authentication', claimsError);
         }
 
         const userId = claimsData.user.id;
-        console.log(`[CampaignService] Authenticated user: ${userId}`);
+        console.log('[CampaignService] Authenticated user for create');
 
         const body = await req.json();
         const { walletAddress, campaignType, arcContext, tones, customInput, imageStyle, intent } = body;
@@ -274,11 +279,7 @@ serve(async (req) => {
         }
 
         if (profile.wallet_address.toLowerCase() !== walletAddress.toLowerCase()) {
-          console.warn(`[CampaignService] Wallet mismatch: ${walletAddress} != ${profile.wallet_address}`);
-          return new Response(JSON.stringify({ error: 'Unauthorized: Wallet address does not match your profile' }), {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          return safeError(403, 'Unauthorized', 'Wallet mismatch');
         }
 
         // Generate intent fingerprint if intent provided
@@ -302,11 +303,10 @@ serve(async (req) => {
           .single();
 
         if (error) {
-          console.error('[CampaignService] Create error:', error);
-          throw error;
+          return safeError(500, 'Failed to create campaign', error);
         }
 
-        console.log(`[CampaignService] Created campaign: ${campaign.id} for user: ${userId}`);
+        console.log('[CampaignService] Campaign created successfully');
 
         return new Response(JSON.stringify({ 
           success: true, 
@@ -356,13 +356,9 @@ serve(async (req) => {
         if (siwe) {
           const siweResult = await verifySiweSignature(siwe, walletAddress);
           if (!siweResult.valid) {
-            console.warn(`[CampaignService] SIWE verification failed: ${siweResult.error}`);
-            return new Response(JSON.stringify({ error: `Authentication failed: ${siweResult.error}` }), {
-              status: 401,
-              headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-            });
+            return safeError(401, 'Authentication failed', siweResult.error);
           }
-          console.log(`[CampaignService] SIWE verified for wallet: ${walletAddress}`);
+          console.log('[CampaignService] SIWE verified for transition');
         }
 
         // Validate state transition
@@ -391,11 +387,7 @@ serve(async (req) => {
 
         // SECURITY: Verify ownership - only campaign owner can transition state
         if (currentCampaign.wallet_address.toLowerCase() !== walletAddress.toLowerCase()) {
-          console.warn(`[CampaignService] Ownership check failed: ${walletAddress} != ${currentCampaign.wallet_address}`);
-          return new Response(JSON.stringify({ error: 'Unauthorized: You do not own this campaign' }), {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          return safeError(403, 'Unauthorized', 'Ownership check failed');
         }
 
         if (currentCampaign.status !== fromState) {
@@ -416,11 +408,10 @@ serve(async (req) => {
           .single();
 
         if (updateError) {
-          console.error('[CampaignService] Transition error:', updateError);
-          throw updateError;
+          return safeError(500, 'Failed to update campaign', updateError);
         }
 
-        console.log(`[CampaignService] Transitioned campaign ${campaignId}: ${fromState} -> ${toState}`);
+        console.log('[CampaignService] Campaign state transitioned successfully');
 
         return new Response(JSON.stringify({ 
           success: true, 
@@ -577,15 +568,11 @@ serve(async (req) => {
         const { data: claimsData, error: claimsError } = await supabaseAuth.auth.getUser(token);
         
         if (claimsError || !claimsData?.user) {
-          console.warn('[CampaignService] Invalid JWT for save:', claimsError?.message);
-          return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          return safeError(401, 'Invalid authentication', claimsError);
         }
 
         const userId = claimsData.user.id;
-        console.log(`[CampaignService] Save request from user: ${userId}`);
+        console.log('[CampaignService] Save request received');
 
         const body = await req.json();
         const { 
@@ -659,11 +646,7 @@ serve(async (req) => {
         }
 
         if (profile.wallet_address.toLowerCase() !== walletAddress.toLowerCase()) {
-          console.warn(`[CampaignService] Wallet mismatch: ${walletAddress} != ${profile.wallet_address}`);
-          return new Response(JSON.stringify({ error: 'Unauthorized: Wallet address does not match your profile' }), {
-            status: 403,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          return safeError(403, 'Unauthorized', 'Wallet mismatch');
         }
 
         // Insert the campaign with validated data (must start as draft due to DB constraint)
@@ -698,8 +681,7 @@ serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
-          console.error('[CampaignService] Save insert error:', insertError);
-          throw insertError;
+          return safeError(500, 'Failed to save campaign', insertError);
         }
         
         // Transition to finalized state (proof ready)
@@ -711,11 +693,11 @@ serve(async (req) => {
           .single();
 
         if (updateError) {
-          console.error('[CampaignService] Status update error:', updateError);
+          console.error('[CampaignService] Status update error (non-fatal):', updateError);
           // Continue with draft campaign if update fails
         }
 
-        console.log(`[CampaignService] Saved campaign: ${campaign.id} for user: ${userId}`);
+        console.log('[CampaignService] Campaign saved successfully');
 
         // AUTO-GENERATE PROOF RECORD (without smart contract for now)
         // This creates a shareable proof URL that can be shared on Twitter
@@ -744,10 +726,10 @@ serve(async (req) => {
           .single();
 
         if (proofError) {
-          console.error('[CampaignService] Proof creation error:', proofError);
+          console.error('[CampaignService] Proof creation error (non-fatal):', proofError);
           // Continue anyway - campaign is saved
         } else {
-          console.log(`[CampaignService] Created proof: ${proof.id} for campaign: ${campaign.id}`);
+          console.log('[CampaignService] Proof created successfully');
         }
 
         return new Response(JSON.stringify({ 
@@ -786,15 +768,11 @@ serve(async (req) => {
         const { data: claimsDataJoin, error: claimsErrorJoin } = await supabaseAuthJoin.auth.getUser(tokenJoin);
         
         if (claimsErrorJoin || !claimsDataJoin?.user) {
-          console.warn('[CampaignService] Invalid JWT for join:', claimsErrorJoin?.message);
-          return new Response(JSON.stringify({ error: 'Invalid authentication' }), {
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+          return safeError(401, 'Invalid authentication', claimsErrorJoin);
         }
 
         const userIdJoin = claimsDataJoin.user.id;
-        console.log(`[CampaignService] Join request from user: ${userIdJoin}`);
+        console.log('[CampaignService] Join request received');
 
         const bodyJoin = await req.json();
         const { templateId, dappId } = bodyJoin;
@@ -986,11 +964,10 @@ serve(async (req) => {
               headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
           }
-          console.error('[CampaignService] Join insert error:', insertErrorJoin);
-          throw insertErrorJoin;
+          return safeError(500, 'Failed to join task', insertErrorJoin);
         }
 
-        console.log(`[CampaignService] User ${userIdJoin} joined ${dappId ? 'dapp' : 'template'}: ${targetTemplateId}`);
+        console.log('[CampaignService] User joined task successfully');
 
         return new Response(JSON.stringify({ 
           success: true, 
@@ -1012,11 +989,6 @@ serve(async (req) => {
       }
     }
   } catch (error: unknown) {
-    console.error('[CampaignService] Error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return safeError(500, 'Internal error', error);
   }
 });

@@ -8,6 +8,15 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Generic error helper - logs details server-side, returns safe message to client
+function safeError(status: number, publicMsg: string, internalDetails?: unknown): Response {
+  if (internalDetails) console.error('[IntentProofService] Internal:', internalDetails);
+  return new Response(JSON.stringify({ error: publicMsg }), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+  });
+}
+
 // Intent Categories (on-chain enum mapping)
 enum IntentCategory {
   Builder = 0,
@@ -879,11 +888,6 @@ serve(async (req) => {
       }
     }
   } catch (error: unknown) {
-    console.error('[IntentProofService] Error:', error);
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return new Response(JSON.stringify({ error: message }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return safeError(500, 'Internal error', error);
   }
 });
