@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { useWallet } from '@/contexts/WalletContext';
 import { JazziconAvatar } from '@/components/JazziconAvatar';
 import toast from 'react-hot-toast';
+import intentLogo from '@/assets/intent-logo.jpg';
 
 const navLinks = [
   { href: '/proofs', label: 'Proofs' },
@@ -64,9 +65,11 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center justify-between h-16 md:h-20">
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group">
-            <div className="w-8 h-8 rounded-lg bg-cyber-gradient flex items-center justify-center shadow-lg group-hover:shadow-[0_0_20px_hsl(189_100%_50%/0.4)] transition-shadow">
-              <span className="font-display font-bold text-primary-foreground text-sm">I</span>
-            </div>
+            <img 
+              src={intentLogo} 
+              alt="INTENT" 
+              className="w-8 h-8 rounded-lg shadow-lg group-hover:shadow-[0_0_20px_hsl(189_100%_50%/0.4)] transition-shadow object-cover"
+            />
             <span className="font-display font-bold text-lg text-foreground hidden sm:block">
               INTENT
             </span>

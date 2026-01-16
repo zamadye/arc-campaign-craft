@@ -61,3 +61,6 @@ verify_jwt = false
 
 [functions.verify-action]
 verify_jwt = false
+
+[functions.event-listener]
+verify_jwt = false
