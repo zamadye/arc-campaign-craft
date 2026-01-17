@@ -184,9 +184,9 @@ function safeError(status: number, publicMessage: string, internalError?: unknow
 const lastSyncTime = { global: 0 };
 const SYNC_COOLDOWN_MS = 60000; // 1 minute between syncs
 
-// Maximum blocks to prevent expensive RPC calls
-const MAX_BLOCKS = 10000;
-const DEFAULT_BLOCKS = 1000;
+// Maximum blocks to prevent expensive RPC calls (reduced for production safety)
+const MAX_BLOCKS = 1000;  // Reduced from 10000 for RPC cost protection
+const DEFAULT_BLOCKS = 500;  // Reduced from 1000 for default query efficiency
 
 Deno.serve(async (req) => {
   // Handle CORS preflight
