@@ -29,28 +29,34 @@ export const arcTestnet = defineChain({
   testnet: true,
 });
 
-// Get WalletConnect Project ID from environment
+// WalletConnect Project ID (safe to be public)
 const projectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID || '32b25a62f2b25d5ec9b84507c6c80c73';
+
+// Canonical app URL + icon to improve wallet trust signals
+const CANONICAL_APP_URL = 'https://app-intent.lovable.app';
+const getAppUrl = () => (typeof window !== 'undefined' ? window.location.origin : CANONICAL_APP_URL);
+const getAppIcon = () => `${getAppUrl()}/intent-logo.jpg`;
 
 // Wagmi configuration
 export const config = createConfig({
   chains: [arcTestnet],
   connectors: [
-    walletConnect({ 
+    walletConnect({
       projectId,
       metadata: {
-        name: 'Arc Campaign Engine',
-        description: 'On-chain marketing & activity execution engine for Arc Network',
-        url: typeof window !== 'undefined' ? window.location.origin : 'https://arc-campaign.app',
-        icons: ['https://arc.network/logo.png']
+        name: 'INTENT Protocol',
+        description: 'Proof of structured participation for Arc Testnet campaigns',
+        // Some wallets use this metadata to assess trust; keep it consistent with the site domain.
+        url: getAppUrl(),
+        icons: [getAppIcon()],
       },
-      showQrModal: false, // We'll use Web3Modal instead
+      showQrModal: false, // We use Web3Modal instead
     }),
     injected({
       shimDisconnect: true,
     }),
     coinbaseWallet({
-      appName: 'Arc Campaign Engine',
+      appName: 'INTENT Protocol',
     }),
   ],
   transports: {
