@@ -67,6 +67,15 @@ export const SimplifiedCampaignForm: React.FC<SimplifiedCampaignFormProps> = ({
     }));
   };
 
+  // Update Twitter verified status
+  const handleTwitterVerifiedChange = (verified: boolean) => {
+    setIsVerifiedTwitter(verified);
+    setCampaignData(prev => ({
+      ...prev,
+      isVerifiedTwitter: verified,
+    }));
+  };
+
   // Set default image style on mount
   useEffect(() => {
     if (!campaignData.imageStyle) {
@@ -184,7 +193,7 @@ export const SimplifiedCampaignForm: React.FC<SimplifiedCampaignFormProps> = ({
                   <Switch
                     id="twitter-verified"
                     checked={isVerifiedTwitter}
-                    onCheckedChange={setIsVerifiedTwitter}
+                    onCheckedChange={handleTwitterVerifiedChange}
                   />
                   <span className={cn("text-xs flex items-center gap-1", isVerifiedTwitter && "text-primary")}>
                     Verified 

@@ -25,6 +25,7 @@ export interface CampaignData {
   targetDApps: string[];
   actionOrder: string[];
   timeWindow: TimeWindow;
+  isVerifiedTwitter?: boolean;
 }
 
 export type { GeneratedCampaign } from '@/hooks/useCampaignGeneration';

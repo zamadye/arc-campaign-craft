@@ -81,39 +81,40 @@ export const ShareModal: React.FC<ShareModalProps> = ({
   };
 
   // Share to Twitter - uses share page URL for automatic image preview
+  // CRITICAL: Share page URL must be at the END of the tweet for Twitter to use it as the preview card
   const shareToTwitter = () => {
     if (!canShare) {
       toast.error('Mint proof first to share');
       return;
     }
 
-    // Compose tweet text with share page link (for image preview)
-    const tweetText = `${campaign.caption}\n\n🔒 Recorded as structured intent on Arc Network\n\n${sharePageUrl}`;
+    // Extract any dApp URLs from caption (these won't have preview cards)
+    // The share page URL at the end WILL have the image preview
+    const captionWithoutShareUrl = campaign.caption.trim();
+    
+    // Compose tweet: Caption first, then share link at END for image preview
+    // Twitter uses the LAST URL for the preview card, so sharePageUrl must be last
+    const tweetText = `${captionWithoutShareUrl}\n\n🔒 Recorded on Arc Network\n${sharePageUrl}`;
 
     // Open Twitter composer
     const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
     window.open(twitterUrl, '_blank', 'noopener,noreferrer,width=600,height=500');
 
-    // Also download image as backup
-    void (async () => {
-      try {
-        if (campaign.imageUrl && !campaign.imageUrl.startsWith('data:')) {
-          // If it's a public URL, just notify user
-          toast.success('Tweet opened! Image will appear as preview from the link.');
-        } else {
-          // For base64, download as backup
+    // Notify user about image preview
+    if (campaign.imageUrl && !campaign.imageUrl.startsWith('data:')) {
+      toast.success('Tweet opened! Image preview will appear from the share link.');
+    } else {
+      // For base64/missing, offer download
+      void (async () => {
+        try {
           await downloadImage();
-          try {
-            await navigator.clipboard.writeText(tweetText);
-            toast.success('Tweet text copied. Attach downloaded image if preview doesn\'t appear.');
-          } catch {
-            toast.success('Twitter opened! Attach the downloaded image if needed.');
-          }
+          toast.success('Image downloaded as backup. Twitter should show preview from link.');
+        } catch (err) {
+          console.error('Download helper error:', err);
+          toast.success('Tweet opened! Share link will show image preview.');
         }
-      } catch (err) {
-        console.error('Share helper error:', err);
-      }
-    })();
+      })();
+    }
   };
 
   // Copy share link to clipboard

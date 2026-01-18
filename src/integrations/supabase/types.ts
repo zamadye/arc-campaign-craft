@@ -239,6 +239,66 @@ export type Database = {
         }
         Relationships: []
       }
+      generation_history: {
+        Row: {
+          action_context: string[] | null
+          caption: string
+          caption_hash: string
+          color_palette: string | null
+          created_at: string | null
+          dapps_context: string[] | null
+          generated_at: string | null
+          id: string
+          image_prompt: string | null
+          image_url: string | null
+          is_verified_twitter: boolean | null
+          pov_perspective: string | null
+          style_used: string | null
+          tone_used: string[] | null
+          user_id: string
+          visual_theme: string | null
+          wallet_address: string
+        }
+        Insert: {
+          action_context?: string[] | null
+          caption: string
+          caption_hash: string
+          color_palette?: string | null
+          created_at?: string | null
+          dapps_context?: string[] | null
+          generated_at?: string | null
+          id?: string
+          image_prompt?: string | null
+          image_url?: string | null
+          is_verified_twitter?: boolean | null
+          pov_perspective?: string | null
+          style_used?: string | null
+          tone_used?: string[] | null
+          user_id: string
+          visual_theme?: string | null
+          wallet_address: string
+        }
+        Update: {
+          action_context?: string[] | null
+          caption?: string
+          caption_hash?: string
+          color_palette?: string | null
+          created_at?: string | null
+          dapps_context?: string[] | null
+          generated_at?: string | null
+          id?: string
+          image_prompt?: string | null
+          image_url?: string | null
+          is_verified_twitter?: boolean | null
+          pov_perspective?: string | null
+          style_used?: string | null
+          tone_used?: string[] | null
+          user_id?: string
+          visual_theme?: string | null
+          wallet_address?: string
+        }
+        Relationships: []
+      }
       nfts: {
         Row: {
           campaign_id: string

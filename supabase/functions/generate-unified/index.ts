@@ -53,21 +53,80 @@ const ARC_KNOWLEDGE_BASE = {
   hashtags: ["#ArcNetwork", "#USDC", "#DeFi", "#Web3", "#Stablecoins", "#RWA", "#TradFi", "#CryptoFinance"]
 };
 
+// ============================================================
+// DYNAMIC VARIETY SYSTEM - Unique themes, colors, POV per generation
+// ============================================================
+
+const VISUAL_THEMES = [
+  "cosmic voyage through digital space",
+  "quantum data flow visualization",
+  "neon-lit cyberpunk cityscape",
+  "crystalline blockchain architecture",
+  "aurora borealis data streams",
+  "deep ocean bioluminescent network",
+  "solar flare energy burst",
+  "matrix digital rain cascade",
+  "holographic financial interface",
+  "abstract geometric transformation",
+  "orbital satellite network view",
+  "molecular bond visualization",
+  "magnetic field line patterns",
+  "fractal expansion animation",
+  "particle physics collision art",
+  "time-lapse city lights network",
+];
+
+const COLOR_PALETTES = [
+  "electric cyan and deep navy",
+  "magenta and cool teal gradient",
+  "golden amber with dark purple",
+  "coral pink and ocean blue",
+  "lime green and charcoal",
+  "violet purple and mint green",
+  "sunset orange with midnight blue",
+  "ice blue and warm coral",
+  "neon pink and electric blue",
+  "emerald green and rose gold",
+  "arctic white and deep indigo",
+  "copper bronze and steel blue",
+];
+
+const POV_PERSPECTIVES = [
+  "aerial bird's-eye view looking down",
+  "macro close-up detail shot",
+  "isometric 3D perspective",
+  "first-person immersive view",
+  "wide cinematic landscape",
+  "abstract pattern top-down",
+  "orbital space view",
+  "underwater depth perspective",
+  "tunnel perspective receding",
+  "split-screen dual view",
+  "fisheye lens distortion",
+  "time-slice multi-exposure",
+];
+
+const MOTION_STYLES = [
+  "flowing liquid movement",
+  "sharp geometric transitions",
+  "organic growth animation",
+  "particle dispersion effect",
+  "wave ripple propagation",
+  "crystallization formation",
+  "glitch distortion flicker",
+  "smooth gradient morph",
+];
+
 // Expanded visual style guides with more variety
 const IMAGE_STYLE_GUIDES: Record<string, string> = {
-  // Primary styles
   tech: "clean minimalist tech aesthetic, precise geometric shapes, electric cyan (#00D9FF) accents, deep space blue (#0A0E27) background, professional and polished, subtle hexagonal grid patterns, floating holographic UI elements, soft ambient glow",
   vibrant: "neon-lit cyberpunk aesthetic, holographic displays with depth, cyan and magenta gradients, dark futuristic environment, glowing blockchain node visualizations, energy streams flowing through circuits, volumetric lighting",
   cosmic: "deep cosmic space backdrop with distant galaxies, nebulae and stellar formations, blockchain constellation patterns connecting nodes, ethereal glow, sci-fi grandeur, orbital trajectories around a central Arc logo form, interstellar data streams",
-  
-  // Extended variety styles
   minimalist: "ultra-clean Swiss design aesthetic, generous whitespace, single cyan accent line, typography-focused, architectural precision, subtle shadows, glass morphism elements",
   blueprint: "technical blueprint style on deep navy background, white and cyan wireframe drawings, engineering grid overlay, precise schematic lines, annotation markers, technical callouts",
   cyberpunk: "rain-soaked neon cityscape, holographic billboards, pink and cyan color palette, chrome reflections, digital rain effects, corporate megastructures, blade runner atmosphere",
   gradient: "abstract gradient art, flowing organic shapes transitioning from deep purple through electric blue to vibrant cyan, liquid metal aesthetics, premium product photography lighting, subtle noise texture",
   space: "vast cosmic void with supernova remnants, arc of light connecting distant stars, data packets visualized as shooting stars, deep field astronomy aesthetic, cosmic dust particles",
-  
-  // New variety styles
   neon: "dark environment with intense neon tube lighting, pink/cyan/purple color scheme, reflective wet surfaces, 80s retro-futurism, synthwave aesthetic, geometric neon shapes",
   matrix: "digital rain of green/cyan code, matrix-style data visualization, dark void background, glowing symbols, binary streams forming patterns, hacker aesthetic",
   crystal: "crystalline structures with internal light refraction, faceted geometric forms, prismatic color dispersion, frozen light aesthetic, ice palace vibes, clarity and precision",
@@ -112,26 +171,19 @@ const TONE_GUIDES: Record<string, string> = {
 
 // Expanded DApp link registry with real Arc ecosystem partners
 const DAPP_REGISTRY: Record<string, { name: string; url: string; category: string }> = {
-  // DeFi Core
   arcflow: { name: "ArcFlow Finance", url: "https://arcflow.finance", category: "DeFi" },
   aave: { name: "Aave", url: "https://aave.com", category: "Lending" },
   maple: { name: "Maple Finance", url: "https://maple.finance", category: "Lending" },
   morpho: { name: "Morpho", url: "https://morpho.org", category: "Lending" },
-  
-  // RWA & Tokenization
   centrifuge: { name: "Centrifuge", url: "https://centrifuge.io", category: "RWA" },
   securitize: { name: "Securitize", url: "https://securitize.io", category: "RWA" },
   superform: { name: "Superform", url: "https://superform.xyz", category: "Yield" },
   usyc: { name: "Circle USYC", url: "https://circle.com", category: "Yield" },
-  
-  // Bridges & Cross-chain
   across: { name: "Across Protocol", url: "https://across.to", category: "Bridge" },
   stargate: { name: "Stargate Finance", url: "https://stargate.finance", category: "Bridge" },
   wormhole: { name: "Wormhole", url: "https://wormhole.com", category: "Bridge" },
   layerzero: { name: "LayerZero", url: "https://layerzero.network", category: "Bridge" },
   axelar: { name: "Axelar", url: "https://axelar.network", category: "Bridge" },
-  
-  // Infrastructure
   alchemy: { name: "Alchemy", url: "https://alchemy.com", category: "Infrastructure" },
   chainlink: { name: "Chainlink", url: "https://chain.link", category: "Oracles" },
   thirdweb: { name: "thirdweb", url: "https://thirdweb.com", category: "Dev Tools" },
@@ -140,19 +192,13 @@ const DAPP_REGISTRY: Record<string, { name: string; url: string; category: strin
   tenderly: { name: "Tenderly", url: "https://tenderly.co", category: "Dev Tools" },
   drpc: { name: "dRPC", url: "https://drpc.org", category: "RPC" },
   quicknode: { name: "QuickNode", url: "https://quicknode.com", category: "RPC" },
-  
-  // Wallets
   metamask: { name: "MetaMask", url: "https://metamask.io", category: "Wallet" },
   rainbow: { name: "Rainbow", url: "https://rainbow.me", category: "Wallet" },
   privy: { name: "Privy", url: "https://privy.io", category: "Wallet" },
   "coinbase-wallet": { name: "Coinbase Wallet", url: "https://wallet.coinbase.com", category: "Wallet" },
   fireblocks: { name: "Fireblocks", url: "https://fireblocks.com", category: "Custody" },
-  
-  // Payments
   ramp: { name: "Ramp Network", url: "https://ramp.network", category: "Payments" },
   nuvei: { name: "Nuvei", url: "https://nuvei.com", category: "Payments" },
-  
-  // Arc Testnet specific (from arcindex.xyz)
   stablestake: { name: "StableStake Protocol", url: "https://arcindex.xyz", category: "DeFi" },
   arcinteractionhub: { name: "ARC Interaction Hub", url: "https://arcindex.xyz", category: "Tools" },
   arcagentpay: { name: "ArcAgentPay", url: "https://arcindex.xyz", category: "Payments" },
@@ -172,7 +218,6 @@ function resolveDApps(targetDApps: unknown): Array<{ id: string; name: string; u
     })
     .filter(Boolean) as Array<{ id: string; name: string; url: string }>;
 
-  // Deterministic fallback with variety
   if (resolved.length >= 2) return resolved;
   return [
     { id: "arcflow", name: DAPP_REGISTRY.arcflow.name, url: DAPP_REGISTRY.arcflow.url },
@@ -181,22 +226,80 @@ function resolveDApps(targetDApps: unknown): Array<{ id: string; name: string; u
   ];
 }
 
-// Validate caption has @ArcFlowFinance mention + line breaks + dApp links
-function validateCaption(caption: string, allowedLinks: string[]): { valid: boolean; issues: string[] } {
+// Random selection helpers
+function pickRandom<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
+
+function pickRandomN<T>(arr: T[], n: number): T[] {
+  const shuffled = [...arr].sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, n);
+}
+
+// Build dynamic image prompt with variety
+function buildDynamicImagePrompt(
+  baseStyle: string,
+  caption: string,
+  dAppsContext: string,
+  actionContext: string,
+  excludedThemes: string[] = [],
+  excludedColors: string[] = [],
+  excludedPov: string[] = []
+): { prompt: string; theme: string; color: string; pov: string; motion: string } {
+  // Filter out recently used elements
+  const availableThemes = VISUAL_THEMES.filter(t => !excludedThemes.includes(t));
+  const availableColors = COLOR_PALETTES.filter(c => !excludedColors.includes(c));
+  const availablePov = POV_PERSPECTIVES.filter(p => !excludedPov.includes(p));
+  
+  // Pick random unique elements
+  const theme = pickRandom(availableThemes.length > 0 ? availableThemes : VISUAL_THEMES);
+  const color = pickRandom(availableColors.length > 0 ? availableColors : COLOR_PALETTES);
+  const pov = pickRandom(availablePov.length > 0 ? availablePov : POV_PERSPECTIVES);
+  const motion = pickRandom(MOTION_STYLES);
+  
+  // Extract keywords from caption for context
+  const captionKeywords = caption
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '')
+    .split(' ')
+    .filter(w => w.length > 4 && !['about', 'their', 'these', 'those', 'which', 'where'].includes(w))
+    .slice(0, 5);
+  
+  const keywordContext = captionKeywords.length > 0 
+    ? `incorporating visual metaphors for: ${captionKeywords.join(', ')}`
+    : '';
+  
+  const prompt = `${theme}, ${pov}, color palette of ${color}, ${motion}, ${baseStyle}, 
+representing ${dAppsContext} activities through ${actionContext} flow, 
+${keywordContext}, 
+16:9 aspect ratio, ultra high resolution, cinematic marketing quality, 
+no text, no logos, no UI screenshots, abstract and conceptual, professional polish`;
+  
+  return { prompt: prompt.trim(), theme, color, pov, motion };
+}
+
+// Validate caption based on twitter type (verified vs non-verified)
+function validateCaption(
+  caption: string, 
+  allowedLinks: string[], 
+  isVerifiedTwitter: boolean
+): { valid: boolean; issues: string[] } {
   const issues: string[] = [];
+  const maxLength = isVerifiedTwitter ? 280 : 200;
+  const minLength = isVerifiedTwitter ? 150 : 100;
+  const minDappLinks = isVerifiedTwitter ? 2 : 1;
 
   if (!caption.includes('@ArcFlowFinance')) {
     issues.push('missing_arcflow_mention');
   }
 
-  // Expect multi-line formatting for readability ("No enter" issue)
   const newlineCount = (caption.match(/\n/g) || []).length;
   if (newlineCount < 2) {
     issues.push('missing_linebreaks');
   }
 
   const urls = extractUrls(caption);
-  if (urls.length < 2) {
+  if (urls.length < minDappLinks) {
     issues.push('missing_dapp_links');
   } else {
     const allowedSet = new Set(allowedLinks);
@@ -206,18 +309,17 @@ function validateCaption(caption: string, allowedLinks: string[]): { valid: bool
     }
   }
 
-  if (caption.length < 150) {
+  if (caption.length < minLength) {
     issues.push('too_short');
   }
 
-  if (caption.length > 320) {
+  if (caption.length > maxLength) {
     issues.push('too_long');
   }
 
   return { valid: issues.length === 0, issues };
 }
 
-// Inject @ArcFlowFinance if missing (fallback)
 function injectArcFlowMention(caption: string): string {
   if (caption.includes('@ArcFlowFinance')) {
     return caption;
@@ -236,14 +338,13 @@ function injectArcFlowMention(caption: string): string {
   return caption + ' @ArcFlowFinance';
 }
 
-function injectDAppLinks(caption: string, links: string[]): string {
+function injectDAppLinks(caption: string, links: string[], maxLinks: number = 3): string {
   const urls = extractUrls(caption);
-  if (urls.length >= 2) return caption;
+  if (urls.length >= maxLinks) return caption;
 
-  const chosen = links.slice(0, 3);
+  const chosen = links.slice(0, maxLinks);
   const linksLine = chosen.join(' ');
 
-  // Add a dedicated links line to keep tweet readable
   return `${caption.trim()}\n\n${linksLine}`;
 }
 
@@ -262,11 +363,16 @@ serve(async (req) => {
       );
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_ANON_KEY')!,
-      { global: { headers: { Authorization: authHeader } } }
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: { headers: { Authorization: authHeader } }
+    });
+
+    // Service role client for generation history
+    const supabaseService = createClient(supabaseUrl, supabaseServiceKey);
 
     const token = authHeader.replace('Bearer ', '');
     const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
@@ -279,7 +385,7 @@ serve(async (req) => {
       );
     }
 
-    const userId = claimsData.claims.sub;
+    const userId = claimsData.claims.sub as string;
     console.log("Authenticated user for unified generation:", userId);
 
     const { 
@@ -293,6 +399,8 @@ serve(async (req) => {
       actionOrder,
       timeWindow,
       dappUrls,
+      walletAddress,
+      isVerifiedTwitter = false, // NEW: Twitter account type
     } = await req.json();
 
     if (!campaignType || !imageStyle) {
@@ -311,6 +419,31 @@ serve(async (req) => {
       );
     }
 
+    // ============================================================
+    // FETCH RECENT GENERATION HISTORY for variety
+    // ============================================================
+    let excludedThemes: string[] = [];
+    let excludedColors: string[] = [];
+    let excludedPov: string[] = [];
+
+    try {
+      const { data: recentHistory } = await supabaseService
+        .from('generation_history')
+        .select('visual_theme, color_palette, pov_perspective')
+        .eq('user_id', userId)
+        .order('generated_at', { ascending: false })
+        .limit(5);
+
+      if (recentHistory && recentHistory.length > 0) {
+        excludedThemes = recentHistory.map(h => h.visual_theme).filter(Boolean) as string[];
+        excludedColors = recentHistory.map(h => h.color_palette).filter(Boolean) as string[];
+        excludedPov = recentHistory.map(h => h.pov_perspective).filter(Boolean) as string[];
+        console.log("Excluding recent variety:", { excludedThemes: excludedThemes.length, excludedColors: excludedColors.length });
+      }
+    } catch (historyError) {
+      console.warn("Could not fetch generation history:", historyError);
+    }
+
     // Build context from selected features
     const selectedFeatures = (arcContext || ['usdc-gas', 'deterministic-finality']).map((id: string) => {
       const feature = ARC_KNOWLEDGE_BASE.coreFeatures[id as keyof typeof ARC_KNOWLEDGE_BASE.coreFeatures];
@@ -322,7 +455,6 @@ serve(async (req) => {
     const campaignContext = CAMPAIGN_CONTEXT[campaignType] || "engaging blockchain content";
 
     // PRIORITY: Use dappUrls passed from frontend (from verified daily tasks)
-    // Fallback to registry-based resolution only if no URLs provided
     const passedDappUrls = Array.isArray(dappUrls) && dappUrls.length > 0 
       ? dappUrls.filter((url: string) => typeof url === 'string' && url.startsWith('http'))
       : [];
@@ -337,7 +469,10 @@ serve(async (req) => {
     
     const dAppsContext = Array.isArray(targetDApps) ? targetDApps.join(', ') : selectedDApps.map((d) => d.name).join(', ');
     const allowedLinks = selectedDApps.map((d) => d.url);
-    const linksContext = allowedLinks.slice(0, 3).map((u) => `- ${u}`).join('\n');
+    
+    // Adjust link limits based on Twitter type
+    const maxDappLinks = isVerifiedTwitter ? 3 : 2;
+    const linksContext = allowedLinks.slice(0, maxDappLinks).map((u) => `- ${u}`).join('\n');
 
     const actionContext = Array.isArray(actionOrder) && actionOrder.length
       ? actionOrder.slice(0, 6).join(' → ')
@@ -345,7 +480,12 @@ serve(async (req) => {
 
     const timeContext = typeof timeWindow === 'string' && timeWindow ? timeWindow : 'none';
 
-    // Unified system prompt
+    // Dynamic caption length based on Twitter type
+    const captionMinLength = isVerifiedTwitter ? 200 : 100;
+    const captionMaxLength = isVerifiedTwitter ? 280 : 200;
+    const dappLinkCount = isVerifiedTwitter ? '2-3' : '1-2';
+
+    // Unified system prompt with dynamic length rules
     const systemPrompt = `You are an expert Web3 marketing specialist for Arc Network. Your task is to generate BOTH a marketing caption AND an image prompt in a single response.
 
 === ARC NETWORK CONTEXT ===
@@ -357,7 +497,7 @@ ${selectedFeatures}
 
 === ECOSYSTEM ===
 Target dApps (names): ${dAppsContext}
-Allowed dApp links (MUST use 2-3 of these, exactly as written):
+Allowed dApp links (MUST use ${dappLinkCount} of these, exactly as written):
 ${linksContext}
 
 Action order (intent steps): ${actionContext}
@@ -373,16 +513,19 @@ Accent: USDC green (#26A17B)
 === STYLE DIRECTION FOR IMAGE ===
 ${styleGuide}
 
+=== TWITTER ACCOUNT TYPE ===
+${isVerifiedTwitter ? 'VERIFIED account - longer captions allowed' : 'NON-VERIFIED account - shorter captions required'}
+
 === CRITICAL RULES ===
 
 FOR CAPTION:
 1. MANDATORY: Must include "@ArcFlowFinance" - NON-NEGOTIABLE
-2. Length: 200-280 characters (including line breaks)
-3. FORMAT: Use 4 lines exactly:
+2. Length: ${captionMinLength}-${captionMaxLength} characters (including line breaks)
+3. FORMAT: Use ${isVerifiedTwitter ? '4' : '3'} lines:
    - Line 1: Hook (1 sentence)
-   - Line 2: What to do (mention at least 2 target dApps by name)
-   - Line 3: 2-3 dApp LINKS (plain URLs) from the allowed list
-   - Line 4: 2-3 hashtags from: ${ARC_KNOWLEDGE_BASE.hashtags.join(', ')}
+   - Line 2: What to do (mention ${isVerifiedTwitter ? 'at least 2' : '1-2'} target dApps by name)
+   - Line 3: ${dappLinkCount} dApp LINKS (plain URLs) from the allowed list
+   ${isVerifiedTwitter ? '- Line 4: 2-3 hashtags from: ' + ARC_KNOWLEDGE_BASE.hashtags.join(', ') : ''}
 4. Tone: ${toneInstructions}
 5. Unique + concrete (refer to the action order)
 6. NEVER promise guaranteed returns or make financial claims
@@ -398,7 +541,7 @@ FOR IMAGE PROMPT:
 === OUTPUT FORMAT ===
 You MUST respond with ONLY valid JSON, no markdown, no explanations:
 {
-  "caption": "4-line caption with \\n line breaks, includes @ArcFlowFinance and 2-3 allowed URLs",
+  "caption": "${isVerifiedTwitter ? '4' : '3'}-line caption with \\n line breaks, includes @ArcFlowFinance and ${dappLinkCount} allowed URLs",
   "imagePrompt": "Detailed scene description"
 }`;
 
@@ -408,6 +551,7 @@ Campaign type: ${campaignContext}
 Target dApps: ${dAppsContext}
 Action order: ${actionContext}
 Time window: ${timeContext}
+Twitter type: ${isVerifiedTwitter ? 'Verified (max 280 chars)' : 'Non-verified (max 200 chars)'}
 Return JSON only.`
       : `Create a unified campaign for Arc Network.
 Campaign type: ${campaignContext}
@@ -415,9 +559,11 @@ Intent: ${intentCategory || 'DeFi'}
 Target dApps: ${dAppsContext}
 Action order: ${actionContext}
 Time window: ${timeContext}
+Twitter type: ${isVerifiedTwitter ? 'Verified (max 280 chars)' : 'Non-verified (max 200 chars)'}
 Return JSON only.`;
 
     console.log("Unified generation: Generating caption + image prompt together...");
+    console.log("Twitter type:", isVerifiedTwitter ? 'Verified' : 'Non-verified');
 
     // Make single AI call for both outputs
     let caption: string | null = null;
@@ -440,7 +586,7 @@ Return JSON only.`;
           messages: [
             { role: "system", content: systemPrompt },
             { role: "user", content: attempts > 1 
-              ? `${userPrompt}\n\nPREVIOUS ATTEMPT FAILED: Did not include @ArcFlowFinance or had invalid format. MANDATORY: Include @ArcFlowFinance mention!`
+              ? `${userPrompt}\n\nPREVIOUS ATTEMPT FAILED: Did not include @ArcFlowFinance or had invalid format. MANDATORY: Include @ArcFlowFinance mention! Caption must be ${captionMinLength}-${captionMaxLength} characters.`
               : userPrompt 
             }
           ],
@@ -465,7 +611,7 @@ Return JSON only.`;
           );
         }
         
-        continue; // Retry on other errors
+        continue;
       }
 
       const data = await response.json();
@@ -480,7 +626,6 @@ Return JSON only.`;
 
       // Parse JSON response
       try {
-        // Clean potential markdown wrapping
         let jsonStr = content;
         if (jsonStr.startsWith('```json')) {
           jsonStr = jsonStr.replace(/^```json\n?/, '').replace(/\n?```$/, '');
@@ -497,22 +642,39 @@ Return JSON only.`;
           continue;
         }
 
-        // Validate caption
-        const validation = validateCaption(caption, allowedLinks);
+        // Validate caption with Twitter type
+        const validation = validateCaption(caption, allowedLinks, isVerifiedTwitter);
         if (!validation.valid) {
           console.warn("Caption validation failed:", validation.issues);
 
-          // Apply deterministic fallbacks when possible
+          // Apply deterministic fallbacks
           if (validation.issues.includes('missing_arcflow_mention')) {
             caption = injectArcFlowMention(caption);
           }
           if (validation.issues.includes('missing_dapp_links') || validation.issues.includes('wrong_links')) {
-            caption = injectDAppLinks(caption, allowedLinks);
+            caption = injectDAppLinks(caption, allowedLinks, maxDappLinks);
           }
 
-          // Re-check after fallbacks; if still invalid, retry
-          const recheck = validateCaption(caption, allowedLinks);
-          if (!recheck.valid) {
+          // Truncate if too long
+          if (validation.issues.includes('too_long') && caption.length > captionMaxLength) {
+            // Find last complete sentence within limit
+            const sentences = caption.split('. ');
+            let truncated = '';
+            for (const sentence of sentences) {
+              if ((truncated + sentence + '. ').length <= captionMaxLength - 20) {
+                truncated += sentence + '. ';
+              }
+            }
+            if (truncated.length > captionMinLength) {
+              caption = truncated.trim();
+              caption = injectArcFlowMention(caption);
+              caption = injectDAppLinks(caption, allowedLinks, maxDappLinks);
+            }
+          }
+
+          // Re-check after fallbacks
+          const recheck = validateCaption(caption, allowedLinks, isVerifiedTwitter);
+          if (!recheck.valid && !recheck.issues.includes('too_long')) {
             continue;
           }
 
@@ -520,7 +682,6 @@ Return JSON only.`;
           break;
         }
 
-        // Valid response - break out of retry loop
         console.log("Valid unified response generated");
         break;
 
@@ -530,7 +691,7 @@ Return JSON only.`;
       }
     }
 
-    // Final fallback - if we still don't have valid data after all attempts
+    // Final fallback
     if (!caption || !imagePrompt) {
       console.error("Failed to generate valid content after", maxAttempts, "attempts");
       return new Response(
@@ -545,23 +706,90 @@ Return JSON only.`;
       console.log("Applied final @ArcFlowFinance safety injection");
     }
 
-    caption = injectDAppLinks(caption, allowedLinks);
+    caption = injectDAppLinks(caption, allowedLinks, maxDappLinks);
+
+    // ============================================================
+    // BUILD DYNAMIC IMAGE PROMPT with variety
+    // ============================================================
+    const dynamicPrompt = buildDynamicImagePrompt(
+      styleGuide,
+      caption,
+      dAppsContext,
+      actionContext,
+      excludedThemes,
+      excludedColors,
+      excludedPov
+    );
+
+    // Enhance the AI-generated image prompt with dynamic variety
+    const enhancedImagePrompt = `${dynamicPrompt.prompt}. ${imagePrompt}`;
+
+    // ============================================================
+    // SAVE TO GENERATION HISTORY for learning & duplicate prevention
+    // ============================================================
+    const captionHash = await crypto.subtle.digest(
+      'SHA-256',
+      new TextEncoder().encode(caption.toLowerCase().trim())
+    ).then(buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join(''));
+
+    try {
+      // Check for duplicate
+      const { data: existingCaption } = await supabaseService
+        .from('generation_history')
+        .select('id')
+        .eq('caption_hash', captionHash)
+        .limit(1);
+
+      if (existingCaption && existingCaption.length > 0) {
+        console.warn("Duplicate caption detected, but proceeding (will save with same hash)");
+      }
+
+      // Save generation history
+      await supabaseService
+        .from('generation_history')
+        .insert({
+          user_id: userId,
+          wallet_address: walletAddress || '',
+          caption,
+          caption_hash: captionHash,
+          image_prompt: enhancedImagePrompt,
+          dapps_context: Array.isArray(targetDApps) ? targetDApps : [],
+          action_context: Array.isArray(actionOrder) ? actionOrder : [],
+          style_used: imageStyle,
+          tone_used: Array.isArray(tones) ? tones : [],
+          color_palette: dynamicPrompt.color,
+          visual_theme: dynamicPrompt.theme,
+          pov_perspective: dynamicPrompt.pov,
+          is_verified_twitter: isVerifiedTwitter,
+        });
+
+      console.log("✅ Generation history saved for AI learning");
+    } catch (historyError) {
+      console.warn("Could not save generation history:", historyError);
+      // Non-blocking - continue with response
+    }
 
     console.log("✅ Unified generation complete");
-    console.log("Caption:", caption.substring(0, 80) + "...");
-    console.log("Image prompt:", imagePrompt.substring(0, 80) + "...");
+    console.log("Caption length:", caption.length, "chars (limit:", captionMaxLength, ")");
+    console.log("Dynamic variety:", dynamicPrompt.theme.substring(0, 30) + "...");
 
     return new Response(
       JSON.stringify({ 
         caption,
-        imagePrompt,
+        imagePrompt: enhancedImagePrompt,
         metadata: {
           campaignType,
           imageStyle,
           targetDApps: targetDApps || [],
           attempts,
           generatedAt: new Date().toISOString(),
-          hasArcFlowMention: caption.includes('@ArcFlowFinance')
+          hasArcFlowMention: caption.includes('@ArcFlowFinance'),
+          isVerifiedTwitter,
+          captionLength: caption.length,
+          maxLength: captionMaxLength,
+          visualTheme: dynamicPrompt.theme,
+          colorPalette: dynamicPrompt.color,
+          povPerspective: dynamicPrompt.pov,
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

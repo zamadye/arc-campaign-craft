@@ -13,6 +13,7 @@ interface CampaignData {
   actionOrder?: string[];
   timeWindow?: string;
   dappUrls?: string[];
+  isVerifiedTwitter?: boolean;
 }
 
 export interface GeneratedCampaign {
@@ -120,6 +121,7 @@ export function useCampaignGeneration() {
           timeWindow: campaignData.timeWindow,
           dappUrls: campaignData.dappUrls,
           walletAddress,
+          isVerifiedTwitter: campaignData.isVerifiedTwitter || false,
         }
       });
 
