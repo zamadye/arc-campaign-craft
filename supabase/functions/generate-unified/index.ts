@@ -279,14 +279,16 @@ no text, no logos, no UI screenshots, abstract and conceptual, professional poli
 }
 
 // Validate caption based on twitter type (verified vs non-verified)
+// Verified Twitter: 1000-3000 characters (long-form content)
+// Non-verified: 100-200 characters (short tweet)
 function validateCaption(
   caption: string, 
   allowedLinks: string[], 
   isVerifiedTwitter: boolean
 ): { valid: boolean; issues: string[] } {
   const issues: string[] = [];
-  const maxLength = isVerifiedTwitter ? 280 : 200;
-  const minLength = isVerifiedTwitter ? 150 : 100;
+  const maxLength = isVerifiedTwitter ? 3000 : 200;
+  const minLength = isVerifiedTwitter ? 800 : 100;
   const minDappLinks = isVerifiedTwitter ? 2 : 1;
 
   if (!caption.includes('@ArcFlowFinance')) {
@@ -471,7 +473,7 @@ serve(async (req) => {
     const allowedLinks = selectedDApps.map((d) => d.url);
     
     // Adjust link limits based on Twitter type
-    const maxDappLinks = isVerifiedTwitter ? 3 : 2;
+    const maxDappLinks = isVerifiedTwitter ? 4 : 2;
     const linksContext = allowedLinks.slice(0, maxDappLinks).map((u) => `- ${u}`).join('\n');
 
     const actionContext = Array.isArray(actionOrder) && actionOrder.length
@@ -480,13 +482,80 @@ serve(async (req) => {
 
     const timeContext = typeof timeWindow === 'string' && timeWindow ? timeWindow : 'none';
 
+    // Soft CTA for Intent promotion (verified accounts only)
+    const intentCTA = `\n\n---\n✨ Want to create unique on-chain content like this? Try Intent on Arc Network → https://app-intent.lovable.app`;
+
     // Dynamic caption length based on Twitter type
-    const captionMinLength = isVerifiedTwitter ? 200 : 100;
-    const captionMaxLength = isVerifiedTwitter ? 280 : 200;
-    const dappLinkCount = isVerifiedTwitter ? '2-3' : '1-2';
+    // Verified: Long-form structured content (1000-3000 chars)
+    // Non-verified: Short punchy tweet (100-200 chars)
+    const captionMinLength = isVerifiedTwitter ? 1000 : 100;
+    const captionMaxLength = isVerifiedTwitter ? 3000 : 200;
+    const dappLinkCount = isVerifiedTwitter ? '3-4' : '1-2';
 
     // Unified system prompt with dynamic length rules
-    const systemPrompt = `You are an expert Web3 marketing specialist for Arc Network. Your task is to generate BOTH a marketing caption AND an image prompt in a single response.
+    // Different system prompts for verified (long-form) vs non-verified (short)
+    const systemPrompt = isVerifiedTwitter 
+      ? `You are an expert Web3 content creator for Arc Network. Your task is to generate a LONG-FORM structured post AND an image prompt.
+
+=== ARC NETWORK CONTEXT ===
+${ARC_KNOWLEDGE_BASE.network.name}: ${ARC_KNOWLEDGE_BASE.network.tagline}
+${ARC_KNOWLEDGE_BASE.network.description}
+
+=== CORE FEATURES TO HIGHLIGHT ===
+${selectedFeatures}
+
+=== ECOSYSTEM & dApps ===
+Target dApps: ${dAppsContext}
+dApp links to include:
+${linksContext}
+
+Action flow: ${actionContext}
+Time context: ${timeContext}
+
+Key Partners: ${ARC_KNOWLEDGE_BASE.ecosystem.partners.slice(0, 8).join(', ')}
+
+=== TWITTER ACCOUNT TYPE ===
+VERIFIED account - LONG-FORM content required (${captionMinLength}-${captionMaxLength} characters)
+
+=== CRITICAL RULES FOR LONG-FORM CAPTION ===
+
+1. MANDATORY: Include "@ArcFlowFinance" early in the post
+2. LENGTH: ${captionMinLength}-${captionMaxLength} characters - this is a THREAD-STYLE long post
+3. STRUCTURE (use clear sections with line breaks):
+   
+   🎯 HOOK (2-3 sentences)
+   - Start with an attention-grabbing statement about DeFi/Arc
+   - Pose a question or highlight a pain point
+   
+   📌 CONTEXT (3-4 sentences)  
+   - Explain what you did: "${actionContext}"
+   - Mention the dApps used: ${dAppsContext}
+   - Highlight Arc Network advantages (USDC gas, instant finality)
+   
+   💡 KEY INSIGHTS (3-5 bullet points)
+   - What made this experience unique
+   - Specific benefits you noticed
+   - Comparisons to other chains (subtle)
+   
+   🔗 RESOURCES (include ${dappLinkCount} links)
+   - List the dApp URLs naturally
+   
+   📊 HASHTAGS
+   - End with 3-5 relevant hashtags: ${ARC_KNOWLEDGE_BASE.hashtags.join(', ')}
+
+4. TONE: ${toneInstructions}
+5. Make it EDUCATIONAL and VALUABLE - readers should learn something
+6. Be AUTHENTIC - write like a real user sharing their experience
+7. NEVER promise returns or make financial claims
+
+=== FOR IMAGE PROMPT ===
+1. Create a unique visual matching the post's theme
+2. Include motifs for: ${dAppsContext}, ${actionContext}
+3. NO text, NO logos, NO UI - abstract/conceptual only
+4. 16:9 aspect ratio, ultra high resolution
+5. Style: ${styleGuide}`
+
+      : `You are an expert Web3 marketing specialist for Arc Network. Your task is to generate a SHORT punchy caption AND an image prompt.
 
 === ARC NETWORK CONTEXT ===
 ${ARC_KNOWLEDGE_BASE.network.name}: ${ARC_KNOWLEDGE_BASE.network.tagline}
@@ -496,70 +565,57 @@ ${ARC_KNOWLEDGE_BASE.network.description}
 ${selectedFeatures}
 
 === ECOSYSTEM ===
-Target dApps (names): ${dAppsContext}
-Allowed dApp links (MUST use ${dappLinkCount} of these, exactly as written):
+Target dApps: ${dAppsContext}
+Allowed links:
 ${linksContext}
 
-Action order (intent steps): ${actionContext}
-Time window: ${timeContext}
-
-Partners: ${ARC_KNOWLEDGE_BASE.ecosystem.partners.join(', ')}
-
-=== BRAND COLORS ===
-Primary: electric cyan (#00D9FF)
-Secondary: deep space blue (#0A0E27)
-Accent: USDC green (#26A17B)
-
-=== STYLE DIRECTION FOR IMAGE ===
-${styleGuide}
+Action: ${actionContext}
 
 === TWITTER ACCOUNT TYPE ===
-${isVerifiedTwitter ? 'VERIFIED account - longer captions allowed' : 'NON-VERIFIED account - shorter captions required'}
+NON-VERIFIED - SHORT caption required (${captionMinLength}-${captionMaxLength} characters MAX)
 
-=== CRITICAL RULES ===
+=== CRITICAL RULES FOR SHORT CAPTION ===
 
-FOR CAPTION:
-1. MANDATORY: Must include "@ArcFlowFinance" - NON-NEGOTIABLE
-2. Length: ${captionMinLength}-${captionMaxLength} characters (including line breaks)
-3. FORMAT: Use ${isVerifiedTwitter ? '4' : '3'} lines:
-   - Line 1: Hook (1 sentence)
-   - Line 2: What to do (mention ${isVerifiedTwitter ? 'at least 2' : '1-2'} target dApps by name)
-   - Line 3: ${dappLinkCount} dApp LINKS (plain URLs) from the allowed list
-   ${isVerifiedTwitter ? '- Line 4: 2-3 hashtags from: ' + ARC_KNOWLEDGE_BASE.hashtags.join(', ') : ''}
-4. Tone: ${toneInstructions}
-5. Unique + concrete (refer to the action order)
-6. NEVER promise guaranteed returns or make financial claims
+1. MANDATORY: Include "@ArcFlowFinance"
+2. LENGTH: MAX ${captionMaxLength} characters - be CONCISE
+3. FORMAT (3 lines only):
+   - Line 1: Hook (1 punchy sentence)
+   - Line 2: Action + 1-2 dApp mentions
+   - Line 3: 1-2 URLs + 1-2 hashtags
+4. TONE: ${toneInstructions}
+5. NO financial claims
 
-FOR IMAGE PROMPT:
-1. Must be DIFFERENT for each caption: include 4-6 distinct visual motifs tied to the caption + action order + chosen dApps
-2. Describe a visual scene (NO text, NO logos, NO UI screenshots)
-3. Use the brand colors specified
-4. Match the caption's theme and energy
-5. 16:9 aspect ratio, ultra high resolution
-6. Abstract/conceptual, professional marketing quality
+=== FOR IMAGE PROMPT ===
+1. Unique visual for this specific post
+2. NO text, NO logos - abstract only
+3. 16:9, high resolution
+4. Style: ${styleGuide}`;
 
+const outputFormat = `
 === OUTPUT FORMAT ===
 You MUST respond with ONLY valid JSON, no markdown, no explanations:
 {
-  "caption": "${isVerifiedTwitter ? '4' : '3'}-line caption with \\n line breaks, includes @ArcFlowFinance and ${dappLinkCount} allowed URLs",
-  "imagePrompt": "Detailed scene description"
+  "caption": "${isVerifiedTwitter ? 'Long-form structured post (1000-3000 chars)' : 'Short 3-line caption (max 200 chars)'} with \\n line breaks, includes @ArcFlowFinance and ${dappLinkCount} URLs",
+  "imagePrompt": "Detailed visual scene description"
 }`;
 
+    const fullSystemPrompt = systemPrompt + outputFormat;
+
     const userPrompt = customInput 
-      ? `Create a unified campaign for Arc Network with this focus: "${customInput}"
+      ? `Create a ${isVerifiedTwitter ? 'long-form educational post' : 'short punchy tweet'} for Arc Network with this focus: "${customInput}"
 Campaign type: ${campaignContext}
 Target dApps: ${dAppsContext}
 Action order: ${actionContext}
 Time window: ${timeContext}
-Twitter type: ${isVerifiedTwitter ? 'Verified (max 280 chars)' : 'Non-verified (max 200 chars)'}
+Twitter type: ${isVerifiedTwitter ? 'VERIFIED (1000-3000 chars, structured, educational)' : 'Non-verified (max 200 chars, punchy)'}
 Return JSON only.`
-      : `Create a unified campaign for Arc Network.
+      : `Create a ${isVerifiedTwitter ? 'long-form educational post' : 'short punchy tweet'} for Arc Network.
 Campaign type: ${campaignContext}
 Intent: ${intentCategory || 'DeFi'}
 Target dApps: ${dAppsContext}
 Action order: ${actionContext}
 Time window: ${timeContext}
-Twitter type: ${isVerifiedTwitter ? 'Verified (max 280 chars)' : 'Non-verified (max 200 chars)'}
+Twitter type: ${isVerifiedTwitter ? 'VERIFIED (1000-3000 chars, structured, educational)' : 'Non-verified (max 200 chars, punchy)'}
 Return JSON only.`;
 
     console.log("Unified generation: Generating caption + image prompt together...");
@@ -584,13 +640,13 @@ Return JSON only.`;
         body: JSON.stringify({
           model: "google/gemini-3-flash-preview",
           messages: [
-            { role: "system", content: systemPrompt },
+            { role: "system", content: fullSystemPrompt },
             { role: "user", content: attempts > 1 
               ? `${userPrompt}\n\nPREVIOUS ATTEMPT FAILED: Did not include @ArcFlowFinance or had invalid format. MANDATORY: Include @ArcFlowFinance mention! Caption must be ${captionMinLength}-${captionMaxLength} characters.`
               : userPrompt 
             }
           ],
-          max_tokens: 600,
+          max_tokens: isVerifiedTwitter ? 2000 : 600, // More tokens for long-form
         }),
       });
 
@@ -707,6 +763,11 @@ Return JSON only.`;
     }
 
     caption = injectDAppLinks(caption, allowedLinks, maxDappLinks);
+
+    // Add soft CTA for verified accounts
+    if (isVerifiedTwitter && !caption.includes('app-intent.lovable.app')) {
+      caption = caption.trim() + intentCTA;
+    }
 
     // ============================================================
     // BUILD DYNAMIC IMAGE PROMPT with variety

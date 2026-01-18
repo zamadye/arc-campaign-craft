@@ -91,7 +91,8 @@ export const SimplifiedCampaignForm: React.FC<SimplifiedCampaignFormProps> = ({
   const isCustomMode = quickStartId === 'custom-selection';
 
   // Calculate caption limit based on Twitter account type
-  const captionLimit = isVerifiedTwitter ? 280 : 200;
+  // Verified: 1k-3k chars (long-form), Non-verified: max 200 chars
+  const captionLimit = isVerifiedTwitter ? '1,000-3,000' : '200';
 
   return (
     <div className="glass rounded-2xl p-6 md:p-8 border border-border/50">
@@ -183,8 +184,8 @@ export const SimplifiedCampaignForm: React.FC<SimplifiedCampaignFormProps> = ({
                   </Label>
                   <p className="text-xs text-muted-foreground">
                     {isVerifiedTwitter 
-                      ? `Verified account: Up to ${captionLimit} characters`
-                      : `Non-verified: Max ${captionLimit} characters`
+                      ? `Verified: Long-form content (${captionLimit} chars) with structured sections + CTA`
+                      : `Non-verified: Short tweet (max ${captionLimit} chars)`
                     }
                   </p>
                 </div>
@@ -267,7 +268,10 @@ export const SimplifiedCampaignForm: React.FC<SimplifiedCampaignFormProps> = ({
           
           {isFormValid && (
             <p className="text-xs text-muted-foreground text-center mt-3">
-              Caption will be max {captionLimit} characters • @ArcFlowFinance will be included
+              {isVerifiedTwitter 
+                ? 'Long-form content with sections • Soft CTA included • @ArcFlowFinance mention'
+                : `Short tweet (max ${captionLimit} chars) • @ArcFlowFinance included`
+              }
             </p>
           )}
         </motion.div>
