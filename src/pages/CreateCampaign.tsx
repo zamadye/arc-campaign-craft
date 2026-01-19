@@ -62,7 +62,11 @@ const CreateCampaign: React.FC = () => {
     } : null
   );
   const [completedCampaignId, setCompletedCampaignId] = useState<string | null>(null);
+  // In debug mode, skip directly to showing the generate button (no tasks panel)
   const [showPreviewInline, setShowPreviewInline] = useState(false);
+  
+  // Skip rendering DailyTasksPanel entirely in debug mode
+  const shouldShowTasksPanel = !DEBUG_SKIP_VERIFICATION && !showPreviewInline;
 
   // Build campaign data from task context
   const buildCampaignData = useCallback((): CampaignData & { dappUrls?: string[] } => {
@@ -288,8 +292,8 @@ const CreateCampaign: React.FC = () => {
           {/* Main Content - Single Column with Inline Transform */}
           <div className="max-w-2xl mx-auto">
             <AnimatePresence mode="wait">
-              {/* Tasks Panel - Show when not in preview mode */}
-              {!showPreviewInline && (
+              {/* Tasks Panel - Show when not in preview mode AND not in debug mode */}
+              {shouldShowTasksPanel && (
                 <motion.div
                   key="tasks-panel"
                   initial={{ opacity: 0, x: -20 }}
@@ -300,46 +304,46 @@ const CreateCampaign: React.FC = () => {
                     onAllTasksCompleted={handleAllTasksCompleted}
                     disabled={!isConnected || !isCorrectNetwork}
                   />
+                </motion.div>
+              )}
 
-                  {/* Generate Button - Shows after tasks completed */}
-                  <AnimatePresence>
-                    {currentStep === 'generate' && !generatedCampaign && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: -20 }}
-                        className="mt-6"
-                      >
-                        <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10">
-                          <CardContent className="py-6">
-                            <div className="text-center">
-                              <Sparkles className="w-10 h-10 mx-auto text-primary mb-3" />
-                              <h3 className="font-semibold text-lg mb-2">Ready to Generate!</h3>
-                              <p className="text-sm text-muted-foreground mb-4">
-                                Your completed tasks: {taskContext?.dapps.join(', ')}
-                              </p>
-                              <Button
-                                variant="gradient"
-                                size="lg"
-                                onClick={handleGenerate}
-                                disabled={isGenerating}
-                                className="gap-2"
-                              >
-                                {isGenerating ? (
-                                  <>Generating...</>
-                                ) : (
-                                  <>
-                                    <Sparkles className="w-4 h-4" />
-                                    Generate Caption
-                                  </>
-                                )}
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
+              {/* Debug Mode Generate Button - Skips tasks entirely */}
+              {DEBUG_SKIP_VERIFICATION && !showPreviewInline && (
+                <motion.div
+                  key="debug-generate"
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                >
+                  <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-accent/10">
+                    <CardContent className="py-6">
+                      <div className="text-center">
+                        <div className="mb-3 inline-flex items-center gap-2 px-3 py-1 rounded-full bg-yellow-500/20 text-yellow-400 text-xs">
+                          🔧 DEBUG MODE - Verification Skipped
+                        </div>
+                        <Sparkles className="w-10 h-10 mx-auto text-primary mb-3" />
+                        <h3 className="font-semibold text-lg mb-2">Ready to Generate!</h3>
+                        <p className="text-sm text-muted-foreground mb-4">
+                          Mock context: {taskContext?.dapps.join(', ')}
+                        </p>
+                        <Button
+                          variant="gradient"
+                          size="lg"
+                          onClick={handleGenerate}
+                          disabled={isGenerating}
+                          className="gap-2"
+                        >
+                          {isGenerating ? (
+                            <>Generating...</>
+                          ) : (
+                            <>
+                              <Sparkles className="w-4 h-4" />
+                              Generate Caption
+                            </>
+                          )}
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
                 </motion.div>
               )}
 
