@@ -32,11 +32,10 @@ export const arcTestnet = defineChain({
 // WalletConnect Project ID (safe to be public)
 const projectId = import.meta.env.VITE_WALLET_CONNECT_PROJECT_ID || '32b25a62f2b25d5ec9b84507c6c80c73';
 
-// Canonical app URL + icon - ALWAYS use verified domain to prevent phishing warnings
-// Using window.location.origin causes mismatches with WalletConnect Verify API
+// Canonical app URL + icon to improve wallet trust signals
 const CANONICAL_APP_URL = 'https://app-intent.lovable.app';
-const getAppUrl = () => CANONICAL_APP_URL; // Always use verified domain for wallet trust
-const getAppIcon = () => `${CANONICAL_APP_URL}/intent-logo.jpg`;
+const getAppUrl = () => (typeof window !== 'undefined' ? window.location.origin : CANONICAL_APP_URL);
+const getAppIcon = () => `${getAppUrl()}/intent-logo.jpg`;
 
 // Wagmi configuration
 export const config = createConfig({

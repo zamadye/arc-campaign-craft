@@ -6,8 +6,6 @@ import { Button } from '@/components/ui/button';
 import { useWallet } from '@/contexts/WalletContext';
 import { JazziconAvatar } from '@/components/JazziconAvatar';
 import { WalletSecurityInfo } from '@/components/WalletSecurityInfo';
-import { DomainVerificationBadge } from '@/components/DomainVerificationBadge';
-import { PreviewModeWarning } from '@/components/PreviewModeWarning';
 import toast from 'react-hot-toast';
 import intentLogo from '@/assets/intent-logo.jpg';
 
@@ -97,7 +95,6 @@ export const Navbar: React.FC = () => {
 
           {/* Wallet Section */}
           <div className="flex items-center gap-3">
-            <DomainVerificationBadge className="hidden md:flex" />
             {!isConnected ? (
               <div className="flex items-center gap-2">
                 <WalletSecurityInfo 
@@ -274,9 +271,6 @@ export const Navbar: React.FC = () => {
           </motion.div>
         )}
       </AnimatePresence>
-      
-      {/* Preview Mode Warning Banner */}
-      <PreviewModeWarning />
     </motion.nav>
   );
 };
